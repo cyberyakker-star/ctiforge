@@ -19,22 +19,36 @@ def _is_url(source: str) -> bool:
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
+_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # refuse pages larger than 20 MB
+
+
 def _ingest_url(source: str) -> tuple[str, str]:
     import httpx
     import trafilatura
 
     try:
-        resp = httpx.get(
+        with httpx.stream(
+            "GET",
             source,
             follow_redirects=True,
             timeout=30.0,
             headers={"User-Agent": "ctiforge/0.1 (+threat-intel extraction)"},
-        )
-        resp.raise_for_status()
+        ) as resp:
+            resp.raise_for_status()
+            body = bytearray()
+            for chunk in resp.iter_bytes():
+                body.extend(chunk)
+                if len(body) > _MAX_DOWNLOAD_BYTES:
+                    raise IngestError(
+                        f"Refusing to download more than "
+                        f"{_MAX_DOWNLOAD_BYTES // (1024 * 1024)} MB from {source!r} — "
+                        "this does not look like a report page."
+                    )
+            encoding = resp.charset_encoding or "utf-8"
     except httpx.HTTPError as exc:
         raise IngestError(f"Failed to fetch URL {source!r}: {exc}") from exc
 
-    downloaded = resp.text
+    downloaded = body.decode(encoding, errors="replace")
     text = trafilatura.extract(
         downloaded, include_comments=False, include_tables=True, favor_recall=True
     )

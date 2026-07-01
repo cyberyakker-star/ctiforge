@@ -3,7 +3,7 @@
 # Threat Report Analysis — sample_advisory.txt
 
 - **Source:** tests/fixtures/sample_advisory.txt
-- **Retrieved:** 2026-07-01T20:43:00.505215+00:00
+- **Retrieved:** 2026-07-01T21:33:40.559572+00:00
 - **Model:** claude-sonnet-4-6
 
 ## Overview
@@ -30,13 +30,13 @@ FANCY EXAMPLE targeted energy and healthcare via spearphishing, deploying EXAMPL
 
 | Value | Original | Role | Context |
 | --- | --- | --- | --- |
-| `evil-c2.example` | evil-c2[.]example | c2 | Command-and-control domain. |
+| `evil-c2.net` | evil-c2[.]net | c2 | Command-and-control domain. |
 
 #### EMAIL (1)
 
 | Value | Original | Role | Context |
 | --- | --- | --- | --- |
-| `phish@evil-c2.example` | phish@evil-c2[.]example |  |  |
+| `phish@evil-c2.net` | phish@evil-c2[.]net |  |  |
 
 #### IPV4 (1)
 
@@ -68,7 +68,8 @@ These technique IDs were proposed by the LLM but failed validation against the A
 
 | Proposed ID | Reason | Behavior |
 | --- | --- | --- |
-| T9999 | unknown technique ID (not present in ATT&CK enterprise) | hallucinated |
+| T9999 | unknown technique ID (not present in ATT&CK enterprise) | hallucinated ID |
+| T1041 | evidence sentence not found verbatim in the report | fabricated evidence example |
 
 ## Appendix — Dropped LLM Indicator References
 

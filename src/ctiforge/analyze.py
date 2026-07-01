@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from .attack import AttackIndex
 from .config import CHUNK_THRESHOLD_CHARS, get_api_key, resolve_model
@@ -123,19 +124,27 @@ def _strip_fences(raw: str) -> str:
 
 
 def _call_json(client, model: str, system: str, user: str) -> dict:
-    """Call the model and parse JSON, retrying once with the error appended."""
+    """Call the model and parse a JSON object, retrying once with the error appended."""
     messages = [{"role": "user", "content": user}]
     last_err = ""
     for attempt in range(2):
         try:
             resp = client.messages.create(
                 model=model,
-                max_tokens=4096,
+                max_tokens=8192,
                 system=system,
                 messages=messages,
             )
         except Exception as exc:  # noqa: BLE001 - surface any SDK/network error loudly
             raise AnalyzeError(f"LLM request failed: {exc}") from exc
+
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            # Retrying with the same limit would truncate again — fail loudly.
+            raise AnalyzeError(
+                "LLM response was truncated at the output-token limit; results "
+                "would be incomplete. The report may be too dense to analyze "
+                "in one pass."
+            )
 
         text = "".join(
             block.text for block in resp.content if getattr(block, "type", "") == "text"
@@ -144,22 +153,25 @@ def _call_json(client, model: str, system: str, user: str) -> dict:
             raise AnalyzeError("LLM returned an empty response (possible refusal).")
 
         try:
-            return json.loads(_strip_fences(text))
+            parsed = json.loads(_strip_fences(text))
+            if isinstance(parsed, dict):
+                return parsed
+            last_err = f"top-level JSON must be an object, got {type(parsed).__name__}"
         except json.JSONDecodeError as exc:
             last_err = str(exc)
-            logger.warning("LLM returned invalid JSON (attempt %d): %s", attempt + 1, exc)
-            messages = [
-                {"role": "user", "content": user},
-                {"role": "assistant", "content": text},
-                {
-                    "role": "user",
-                    "content": (
-                        f"That was not valid JSON ({last_err}). Respond again with "
-                        "ONLY the JSON object, no prose and no markdown fences."
-                    ),
-                },
-            ]
-    raise AnalyzeError(f"LLM did not return valid JSON after retry: {last_err}")
+        logger.warning("LLM returned unusable JSON (attempt %d): %s", attempt + 1, last_err)
+        messages = [
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": text},
+            {
+                "role": "user",
+                "content": (
+                    f"That was not a valid JSON object ({last_err}). Respond again "
+                    "with ONLY the JSON object, no prose and no markdown fences."
+                ),
+            },
+        ]
+    raise AnalyzeError(f"LLM did not return a valid JSON object after retry: {last_err}")
 
 
 def _build_user_prompt(text: str, indicators: list[Indicator]) -> str:
@@ -181,6 +193,10 @@ def analyze(
     resolved_model = resolve_model(model)
     client = _client()
 
+    if attack_index is None:
+        attack_index = AttackIndex.load()
+
+    pre_rejected: list[RejectedMapping] = []
     chunks = _chunk_text(text, CHUNK_THRESHOLD_CHARS)
     if len(chunks) == 1:
         raw = _call_json(
@@ -194,13 +210,56 @@ def analyze(
             )
             for c in chunks
         ]
+        # Validate technique IDs in the partials BEFORE the merge call: the
+        # merge LLM may drop a bogus ID during consolidation, and a rejected
+        # hallucination must be surfaced, never silently vanish.
+        pre_rejected = _pre_validate_partials(partials, attack_index)
         merge_user = "PARTIAL ANALYSES TO MERGE:\n" + json.dumps(partials, ensure_ascii=False)
         raw = _call_json(client, resolved_model, MERGE_SYSTEM_PROMPT, merge_user)
 
-    if attack_index is None:
-        attack_index = AttackIndex.load()
+    return _post_process(
+        raw, indicators, attack_index, resolved_model, text, pre_rejected=pre_rejected
+    )
 
-    return _post_process(raw, indicators, attack_index, resolved_model)
+
+def _pre_validate_partials(
+    partials: list[dict], attack_index: AttackIndex
+) -> list[RejectedMapping]:
+    """Collect invalid technique IDs proposed in per-chunk partial analyses."""
+    rejected: list[RejectedMapping] = []
+    seen: set[str] = set()
+    for partial in partials:
+        if not isinstance(partial, dict):
+            continue
+        for item in partial.get("techniques") or []:
+            if not isinstance(item, dict):
+                continue
+            tid = str(item.get("technique_id", "")).strip()
+            result = attack_index.validate(tid)
+            if result.valid or tid.upper() in seen:
+                continue
+            seen.add(tid.upper())
+            rejected.append(
+                RejectedMapping(
+                    technique_id=tid or "(empty)",
+                    reason=result.reason,
+                    behavior=str(item.get("behavior", "")).strip(),
+                    evidence=str(item.get("evidence", "")).strip(),
+                )
+            )
+    return rejected
+
+
+def _normalize_for_match(s: str) -> str:
+    """Casefold and collapse whitespace so quotes can be matched tolerantly."""
+    return re.sub(r"\s+", " ", s).casefold().strip().strip("\"'“”‘’")
+
+
+def _str_list(value: object) -> list[str]:
+    """Coerce an LLM-supplied value to a list of strings (defensively)."""
+    if isinstance(value, list):
+        return [str(x) for x in value]
+    return []
 
 
 def _post_process(
@@ -208,22 +267,53 @@ def _post_process(
     indicators: list[Indicator],
     attack_index: AttackIndex,
     model: str,
+    report_text: str,
+    pre_rejected: list[RejectedMapping] | None = None,
 ) -> ReportAnalysis:
-    """Apply the guards: drop invented indicators, validate every technique ID."""
+    """Apply the guards: drop invented indicators, validate every technique ID,
+    and require each mapping's evidence to actually appear in the report."""
     allowed = {i.value.lower(): i.value for i in indicators}
+    # Match evidence against both the raw text and a refanged copy, since the
+    # model may normalize defanged indicators when quoting.
+    from .extract import _refang_text
 
-    # Indicator context — drop anything not in the extracted list.
+    norm_report = _normalize_for_match(report_text)
+    norm_report_refanged = _normalize_for_match(_refang_text(report_text))
+
+    def _grounded(evidence: str) -> bool:
+        needle = _normalize_for_match(evidence)
+        return bool(needle) and (needle in norm_report or needle in norm_report_refanged)
+
+    def _items(key: str) -> list[dict]:
+        value = raw.get(key)
+        if not isinstance(value, list):
+            if value is not None:
+                logger.warning("LLM returned non-list for %r; ignoring.", key)
+            return []
+        out = []
+        for item in value:
+            if isinstance(item, dict):
+                out.append(item)
+            else:
+                logger.warning("Skipping malformed %s entry: %r", key, item)
+        return out
+
+    # Indicator context — drop anything not in the extracted list; dedupe by value.
     contexts: list[IndicatorContext] = []
+    seen_values: set[str] = set()
     dropped: list[str] = []
-    for item in raw.get("indicator_context") or []:
+    for item in _items("indicator_context"):
         value = str(item.get("value", "")).strip()
         canonical = allowed.get(value.lower())
         if canonical is None:
             logger.warning("Dropping LLM-invented indicator not in extracted list: %r", value)
             dropped.append(value)
             continue
+        if canonical.lower() in seen_values:
+            continue
+        seen_values.add(canonical.lower())
         role = item.get("role", "unknown")
-        if role not in _VALID_ROLES:
+        if not isinstance(role, str) or role not in _VALID_ROLES:
             role = "unknown"
         contexts.append(
             IndicatorContext(
@@ -233,33 +323,49 @@ def _post_process(
             )
         )
 
-    # Techniques — validate every ID against ATT&CK.
+    # Techniques — validate every ID against ATT&CK; require grounded evidence;
+    # dedupe by technique ID (first occurrence wins).
     techniques: list[TechniqueMapping] = []
-    rejected: list[RejectedMapping] = []
-    for item in raw.get("techniques") or []:
+    rejected: list[RejectedMapping] = list(pre_rejected or [])
+    seen_rejected: set[str] = {r.technique_id.upper() for r in rejected}
+    seen_accepted: set[str] = set()
+    def _reject(tid: str, reason: str, behavior: str, evidence: str) -> None:
+        if tid.upper() in seen_rejected:
+            return
+        seen_rejected.add(tid.upper())
+        rejected.append(
+            RejectedMapping(
+                technique_id=tid or "(empty)",
+                reason=reason,
+                behavior=behavior,
+                evidence=evidence,
+            )
+        )
+
+    for item in _items("techniques"):
         tid = str(item.get("technique_id", "")).strip()
         evidence = str(item.get("evidence", "")).strip()
         behavior = str(item.get("behavior", "")).strip()
         result = attack_index.validate(tid)
+
         if not result.valid:
-            rejected.append(
-                RejectedMapping(
-                    technique_id=tid or "(empty)",
-                    reason=result.reason,
-                    behavior=behavior,
-                    evidence=evidence,
-                )
-            )
+            _reject(tid, result.reason, behavior, evidence)
             continue
         if not evidence:
-            rejected.append(
-                RejectedMapping(
-                    technique_id=tid,
-                    reason="no verbatim evidence sentence supplied",
-                    behavior=behavior,
-                )
+            _reject(tid, "no verbatim evidence sentence supplied", behavior, evidence)
+            continue
+        if not _grounded(evidence):
+            logger.warning(
+                "Rejecting %s: evidence sentence not found in report text.", tid
+            )
+            _reject(
+                tid, "evidence sentence not found verbatim in the report",
+                behavior, evidence,
             )
             continue
+        if result.technique_id in seen_accepted:
+            continue
+        seen_accepted.add(result.technique_id)
         conf = item.get("confidence", "low")
         techniques.append(
             TechniqueMapping(
@@ -272,14 +378,16 @@ def _post_process(
             )
         )
 
-    targeting_raw = raw.get("targeting") or {}
+    targeting_raw = raw.get("targeting")
+    if not isinstance(targeting_raw, dict):
+        targeting_raw = {}
     return ReportAnalysis(
         summary=str(raw.get("summary", "")).strip(),
-        threat_actors=[str(a) for a in (raw.get("threat_actors") or [])],
-        malware_families=[str(m) for m in (raw.get("malware_families") or [])],
+        threat_actors=_str_list(raw.get("threat_actors")),
+        malware_families=_str_list(raw.get("malware_families")),
         targeting=Targeting(
-            sectors=[str(s) for s in (targeting_raw.get("sectors") or [])],
-            regions=[str(r) for r in (targeting_raw.get("regions") or [])],
+            sectors=_str_list(targeting_raw.get("sectors")),
+            regions=_str_list(targeting_raw.get("regions")),
         ),
         techniques=techniques,
         indicator_context=contexts,

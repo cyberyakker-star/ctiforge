@@ -64,12 +64,14 @@ def analyze(
     from .ingest import IngestError, ingest
     from .render import render_all
 
-    try:
-        formats = [f.strip().lower() for f in fmt.split(",") if f.strip()]
-        bad = set(formats) - {"json", "md", "csv"}
-        if bad:
-            raise typer.BadParameter(f"Unknown format(s): {', '.join(sorted(bad))}")
+    # Validate parameters BEFORE the pipeline try-block so click's usage-error
+    # handling (exit code 2, usage text) applies instead of the generic handler.
+    formats = [f.strip().lower() for f in fmt.split(",") if f.strip()]
+    bad = set(formats) - {"json", "md", "csv"}
+    if bad:
+        raise typer.BadParameter(f"Unknown format(s): {', '.join(sorted(bad))}")
 
+    try:
         typer.echo(f"[1/5] Ingesting {source} ...")
         report = ingest(source)
 
@@ -107,8 +109,6 @@ def analyze(
     except (IngestError, AttackError, AnalyzeError) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
-    except typer.Exit:
-        raise
     except Exception as exc:  # noqa: BLE001 - top-level guard: fail loudly, non-zero exit
         typer.secho(f"unexpected error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc

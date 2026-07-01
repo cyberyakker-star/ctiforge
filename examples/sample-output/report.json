@@ -42,7 +42,7 @@
   ],
   "indicator_context": [
     {
-      "value": "evil-c2.example",
+      "value": "evil-c2.net",
       "role": "c2",
       "context": "Command-and-control domain."
     },
@@ -61,8 +61,14 @@
     {
       "technique_id": "T9999",
       "reason": "unknown technique ID (not present in ATT&CK enterprise)",
-      "behavior": "hallucinated",
+      "behavior": "hallucinated ID",
       "evidence": "The malware communicated with command-and-control infrastructure over HTTPS."
+    },
+    {
+      "technique_id": "T1041",
+      "reason": "evidence sentence not found verbatim in the report",
+      "behavior": "fabricated evidence example",
+      "evidence": "This sentence was invented by the model and is not in the report."
     }
   ],
   "dropped_indicators": [
@@ -70,7 +76,7 @@
   ],
   "source_url_or_path": "tests/fixtures/sample_advisory.txt",
   "title": "sample_advisory.txt",
-  "retrieved_at": "2026-07-01T20:43:00.505215Z",
+  "retrieved_at": "2026-07-01T21:33:40.559572Z",
   "model": "claude-sonnet-4-6",
   "indicators": [
     {
@@ -84,14 +90,14 @@
       "defanged_original": null
     },
     {
-      "value": "phish@evil-c2.example",
+      "value": "phish@evil-c2.net",
       "type": "email",
-      "defanged_original": "phish@evil-c2[.]example"
+      "defanged_original": "phish@evil-c2[.]net"
     },
     {
-      "value": "evil-c2.example",
+      "value": "evil-c2.net",
       "type": "domain",
-      "defanged_original": "evil-c2[.]example"
+      "defanged_original": "evil-c2[.]net"
     },
     {
       "value": "44d88612fea8a8f36de82e1278abb02f",

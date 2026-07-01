@@ -30,14 +30,18 @@ def write_json(analysis: ReportAnalysis, out_dir: Path) -> Path:
 def write_csv(analysis: ReportAnalysis, out_dir: Path) -> Path:
     path = out_dir / "iocs.csv"
     ctx = _context_lookup(analysis)
-    tech_conf = "n/a"  # confidence column applies to indicator context, default n/a
     with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(["value", "type", "context", "confidence"])
         for ind in analysis.indicators:
             role, context = ctx.get(ind.value.lower(), ("", ""))
-            cell = f"{role}: {context}".strip(": ").strip() if (role or context) else ""
-            writer.writerow([ind.value, ind.type, cell, tech_conf])
+            if role and context:
+                cell = f"{role}: {context}"
+            else:
+                cell = role or context
+            # per-indicator confidence is not produced in v0.1; column kept
+            # stable for downstream consumers.
+            writer.writerow([ind.value, ind.type, cell, "n/a"])
     return path
 
 
