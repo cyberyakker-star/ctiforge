@@ -24,6 +24,7 @@ dependencies = [
     "trafilatura>=1.8",
     "pymupdf>=1.24",
     "iocextract>=1.16",
+    "requests>=2.31",  # required at import time by iocextract, which under-declares it
     "pydantic>=2.6",
     "anthropic>=0.39",
 ]

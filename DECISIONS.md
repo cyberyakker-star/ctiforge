@@ -17,3 +17,7 @@ Ambiguity resolutions and notable choices made while building ctiforge v0.1.
 - **CSV `confidence` column**: indicator-level confidence is not produced by the
   model (confidence attaches to techniques), so the column is emitted as `n/a`.
 - **Model default** kept as `claude-sonnet-4-6` per the brief (not relitigated).
+- **`requests` dependency**: added explicitly because `iocextract` imports it at
+  module load but under-declares it in its own metadata (CI installed iocextract
+  without pulling requests, breaking `import iocextract`). Not a new functional
+  dependency — it just makes the brief-approved iocextract importable.
