@@ -9,6 +9,7 @@ from pathlib import Path
 from .config import REVIEW_BANNER
 from .models import ReportAnalysis
 
+
 def _esc(text: str) -> str:
     """Escape pipe characters for Markdown table cells."""
     return (text or "").replace("|", "\\|").replace("\n", " ")
@@ -131,7 +132,9 @@ def write_markdown(analysis: ReportAnalysis, out_dir: Path) -> Path:
     return path
 
 
-def render_all(analysis: ReportAnalysis, out_dir: Path, formats: list[str] | None = None) -> list[Path]:
+def render_all(
+    analysis: ReportAnalysis, out_dir: Path, formats: list[str] | None = None
+) -> list[Path]:
     """Write requested output files. formats subset of {json, md, csv}; default all."""
     out_dir.mkdir(parents=True, exist_ok=True)
     formats = formats or ["json", "md", "csv"]

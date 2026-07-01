@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -57,7 +57,8 @@ def analyze(
     )
 
     # Imported here so `--version` / `--help` stay fast and dependency-light.
-    from .analyze import AnalyzeError, analyze as run_analysis
+    from .analyze import AnalyzeError
+    from .analyze import analyze as run_analysis
     from .attack import AttackError, AttackIndex
     from .extract import extract_indicators
     from .ingest import IngestError, ingest
@@ -88,7 +89,7 @@ def analyze(
         analysis.retrieved_at = report.retrieved_at
 
         out_dir = output or Path(
-            f"./ctiforge-output-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
+            f"./ctiforge-output-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
         )
         typer.echo(f"[5/5] Writing outputs to {out_dir} ...")
         written = render_all(analysis, out_dir, formats)

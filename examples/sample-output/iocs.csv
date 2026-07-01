@@ -1,0 +1,7 @@
+value,type,context,confidence
+https://malicious.example.org/update,url,payload_delivery: Payload delivery URL.,n/a
+45.77.88.99,ipv4,c2: C2 server IP.,n/a
+phish@evil-c2.example,email,,n/a
+evil-c2.example,domain,c2: Command-and-control domain.,n/a
+44d88612fea8a8f36de82e1278abb02f,md5,,n/a
+275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f,sha256,,n/a

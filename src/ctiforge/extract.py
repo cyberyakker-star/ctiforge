@@ -135,22 +135,20 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
         if itype == "ipv6":
             add(str(ipaddress.ip_address(m.group(0))), itype)
 
-    # Emails (before domains, so their host isn't double-counted as a domain).
-    email_hosts: set[str] = set()
+    # Emails
     for m in re.finditer(r"\b[a-zA-Z0-9._%+-]+@((?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63})\b", norm):
-        e = m.group(0).lower()
         host = m.group(1).lower()
-        if not has_plausible_tld(host):
-            continue
-        email_hosts.add(host)
-        add(e, "email")
+        if has_plausible_tld(host):
+            add(m.group(0).lower(), "email")
 
-    # Domains — regex scan validated against the plausible-TLD check.
-    for m in re.finditer(r"(?<![@/\w])((?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63})\b", norm):
+    # Domains — regex scan validated against the plausible-TLD check. The
+    # lookbehind excludes '@', '/', '.', '-' and word chars so we never capture
+    # a partial label from inside a URL or email host.
+    for m in re.finditer(r"(?<![@/\w.-])((?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63})\b", norm):
         cand = m.group(1).rstrip(".").lower()
         if not _DOMAIN_RE.match(cand) or not has_plausible_tld(cand):
             continue
-        if cand in url_hosts or cand in email_hosts:
+        if cand in url_hosts:
             continue
         add(cand, "domain")
 

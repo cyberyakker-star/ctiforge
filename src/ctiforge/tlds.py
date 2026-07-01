@@ -25,6 +25,8 @@ KNOWN_TLDS: frozenset[str] = frozenset(
         "ph", "tw", "hk", "mx", "ar", "cl", "pe", "ve", "by", "kz", "ge",
         "am", "az", "md", "lv", "lt", "ee", "rs", "hr", "si", "ba", "mk",
         "su", "cx", "ws", "tk", "ml", "ga", "cf", "gq", "pw", "cat",
+        # RFC 2606 reserved TLDs (common in advisories / sanitized samples)
+        "example", "test", "invalid",
     }
 )
 

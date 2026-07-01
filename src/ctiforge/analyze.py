@@ -16,8 +16,8 @@ from .config import CHUNK_THRESHOLD_CHARS, get_api_key, resolve_model
 from .models import (
     Indicator,
     IndicatorContext,
-    ReportAnalysis,
     RejectedMapping,
+    ReportAnalysis,
     Targeting,
     TechniqueMapping,
 )

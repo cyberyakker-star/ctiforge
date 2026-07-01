@@ -1,0 +1,34 @@
+CISA Cybersecurity Advisory (Sample, Public Domain)
+
+Summary
+
+This joint advisory describes activity by the threat actor tracked as
+FANCY EXAMPLE (also known as APT-EXAMPLE) targeting the energy and
+healthcare sectors across North America and Europe. The actors deployed a
+custom backdoor known as EXAMPLELOADER to maintain persistence.
+
+Technical Details
+
+The actors gained initial access through spearphishing emails containing
+malicious attachments. Victims who opened the attachment executed a
+PowerShell command that downloaded a second-stage payload. The malware
+communicated with command-and-control infrastructure over HTTPS.
+
+Observed command-and-control servers include the domain evil-c2[.]example
+and the IP address 45.77.88.99. A payload delivery URL was observed at
+hxxps://malicious.example[.]org/update. Analysts also recovered the phishing
+sender address phish@evil-c2[.]example.
+
+Indicators of Compromise
+
+Domain: evil-c2[.]example
+IPv4: 45.77.88.99
+URL: hxxps://malicious.example[.]org/update
+Email: phish@evil-c2[.]example
+MD5: 44d88612fea8a8f36de82e1278abb02f
+SHA256: 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f
+
+Mitigations
+
+Organizations should enforce multi-factor authentication and restrict
+PowerShell execution where feasible. Report incidents to CISA.
