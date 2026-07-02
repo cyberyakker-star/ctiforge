@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 from pathlib import Path
 
@@ -20,28 +21,39 @@ def _context_lookup(analysis: ReportAnalysis) -> dict[str, tuple[str, str]]:
     return {c.value.lower(): (c.role, c.context) for c in analysis.indicator_context}
 
 
+def analysis_to_json(analysis: ReportAnalysis) -> str:
+    """Render the full analysis as a JSON string (with the review banner)."""
+    payload = {"review_banner": REVIEW_BANNER, **analysis.model_dump(mode="json")}
+    return json.dumps(payload, indent=2, ensure_ascii=False)
+
+
+def analysis_to_csv(analysis: ReportAnalysis) -> str:
+    """Render the IOC list as a CSV string (value,type,context,confidence)."""
+    ctx = _context_lookup(analysis)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["value", "type", "context", "confidence"])
+    for ind in analysis.indicators:
+        role, context = ctx.get(ind.value.lower(), ("", ""))
+        if role and context:
+            cell = f"{role}: {context}"
+        else:
+            cell = role or context
+        # per-indicator confidence is not produced in v0.1; column kept
+        # stable for downstream consumers.
+        writer.writerow([ind.value, ind.type, cell, "n/a"])
+    return buf.getvalue()
+
+
 def write_json(analysis: ReportAnalysis, out_dir: Path) -> Path:
     path = out_dir / "report.json"
-    payload = {"review_banner": REVIEW_BANNER, **analysis.model_dump(mode="json")}
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    path.write_text(analysis_to_json(analysis), encoding="utf-8")
     return path
 
 
 def write_csv(analysis: ReportAnalysis, out_dir: Path) -> Path:
     path = out_dir / "iocs.csv"
-    ctx = _context_lookup(analysis)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(["value", "type", "context", "confidence"])
-        for ind in analysis.indicators:
-            role, context = ctx.get(ind.value.lower(), ("", ""))
-            if role and context:
-                cell = f"{role}: {context}"
-            else:
-                cell = role or context
-            # per-indicator confidence is not produced in v0.1; column kept
-            # stable for downstream consumers.
-            writer.writerow([ind.value, ind.type, cell, "n/a"])
+    path.write_text(analysis_to_csv(analysis), encoding="utf-8", newline="")
     return path
 
 
@@ -66,8 +78,8 @@ def _md_ioc_table(analysis: ReportAnalysis) -> str:
     return "\n".join(parts)
 
 
-def write_markdown(analysis: ReportAnalysis, out_dir: Path) -> Path:
-    path = out_dir / "report.md"
+def analysis_to_markdown(analysis: ReportAnalysis) -> str:
+    """Render the human-readable Markdown report as a string."""
     a = analysis
     lines: list[str] = []
 
@@ -132,7 +144,12 @@ def write_markdown(analysis: ReportAnalysis, out_dir: Path) -> Path:
             lines.append(f"- `{v}`")
         lines.append("")
 
-    path.write_text("\n".join(lines), encoding="utf-8")
+    return "\n".join(lines)
+
+
+def write_markdown(analysis: ReportAnalysis, out_dir: Path) -> Path:
+    path = out_dir / "report.md"
+    path.write_text(analysis_to_markdown(analysis), encoding="utf-8")
     return path
 
 

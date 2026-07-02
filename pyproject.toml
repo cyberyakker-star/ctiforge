@@ -30,7 +30,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+# AI-agent interface (MCP tool server).
+mcp = ["mcp>=1.2"]
+# Human interface: REST API + local web UI.
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9"]
+# Everything.
+all = ["ctiforge[mcp,server]"]
+dev = ["pytest>=8.0", "ruff>=0.6", "ctiforge[all]"]
 
 [project.urls]
 Homepage = "https://github.com/cyberyakker-star/ctiforge"
@@ -38,9 +44,12 @@ Repository = "https://github.com/cyberyakker-star/ctiforge"
 
 [project.scripts]
 ctiforge = "ctiforge.cli:app"
+ctiforge-mcp = "ctiforge.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ctiforge"]
+# Ship the web UI page as package data.
+include = ["src/ctiforge/web/*.html"]
 
 [tool.ruff]
 line-length = 100

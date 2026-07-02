@@ -79,6 +79,57 @@ ctiforge analyze <source> [options]
 
 The API key comes from `ANTHROPIC_API_KEY` only — never a config file, never logged.
 
+## Interfaces
+
+ctiforge ships one core pipeline behind three optional front-ends. All are thin
+adapters over the same code, so they produce identical, guard-checked results.
+
+### CLI (default)
+`ctiforge analyze <source>` — as above. No extra install needed.
+
+### MCP server — for AI agents
+Expose ctiforge as tools any MCP client (Claude Desktop/Code, Cursor, …) can call:
+
+```bash
+pip install "ctiforge[mcp]"
+```
+
+Tools:
+- **`extract_iocs(text)`** — deterministic IOC extraction. No API key, no cost,
+  cannot hallucinate. Great for agents that just need indicators.
+- **`validate_attack_technique(id)`** — instant ATT&CK ID check.
+- **`analyze_report(source)`** — the full pipeline (needs `ANTHROPIC_API_KEY`; paid).
+
+Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ctiforge": {
+      "command": "ctiforge-mcp",
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+### Web UI + REST API — for human analysts
+```bash
+pip install "ctiforge[server]"
+ctiforge serve            # → http://127.0.0.1:8000
+```
+
+Paste a URL, paste text, or drop a PDF; read the rendered report (summary,
+ATT&CK table with evidence, IOC tables, and the rejected-mappings / dropped-
+indicators appendices) and download the JSON/MD/CSV. The same endpoints are a
+REST API (`POST /api/analyze`, `POST /api/extract`, `GET /api/attack/{id}`,
+`POST /api/upload`) with OpenAPI docs at `/docs`.
+
+> **Security:** the server binds to `127.0.0.1` and uses *its own*
+> `ANTHROPIC_API_KEY`. Don't expose it publicly without adding authentication.
+
+Install everything with `pip install "ctiforge[all]"`.
+
 ## Example output
 
 See [`examples/sample-output/`](examples/sample-output/) for a full run against
@@ -120,12 +171,14 @@ ingest  →  extract  →  ATT&CK index  →  analyze (LLM)  →  render
 
 ## Roadmap
 
+- **Done** — MCP server, REST API, and local web UI (see [Interfaces](#interfaces)).
 - **v0.2** — Sigma / YARA rule drafting (see the `sigma.py` stub), STIX 2.1 export.
 - **v0.3** — opt-in, read-only enrichment (e.g. VirusTotal) of extracted indicators.
-- Later — multi-report correlation.
+- Later — multi-report correlation; async job queue for the API so large PDFs
+  don't block a request.
 
-Explicitly **not** in v0.1: rule drafting, MISP/OpenCTI/STIX export, any online
-enrichment or indicator lookups, web UI, database.
+Explicitly **not** yet: rule drafting, MISP/OpenCTI/STIX export, any online
+enrichment or indicator lookups, database, authentication on the hosted API.
 
 ## Development
 
