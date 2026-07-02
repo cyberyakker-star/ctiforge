@@ -53,3 +53,25 @@ Ambiguity resolutions and notable choices made while building ctiforge v0.1.
 - **iocextract kept** (used for hash extraction only) because the brief
   mandates it; dropping it (and the `requests` pin) in favor of a local hex
   regex is a candidate simplification for v0.2 — flagged, not applied.
+
+## Interfaces (MCP + REST + web UI)
+
+- **One shared pipeline** (`pipeline.py`: `analyze_source` / `analyze_text` /
+  `get_index`) backs the CLI, MCP server and REST API, so the ingest → extract
+  → validate → analyze sequence exists in exactly one place. `render.py` gained
+  `analysis_to_{json,markdown,csv}()` string helpers (the file writers now wrap
+  them) so the API can return rendered artifacts without temp files.
+- **Three interfaces, all optional extras** so the core install stays lean:
+  `ctiforge[mcp]`, `ctiforge[server]`, `ctiforge[all]`. New deps (`mcp`,
+  `fastapi`, `uvicorn`, `python-multipart`) live only in those extras.
+- **MCP tool split by cost/trust**: `extract_iocs` and
+  `validate_attack_technique` are free/deterministic/keyless; `analyze_report`
+  is the paid full pipeline, with the cost/latency called out in its docstring
+  so agents invoke it deliberately.
+- **Web UI is a single vanilla-JS page** served by FastAPI (no build step) so
+  CI stays Python-only (ruff + pytest). It foregrounds the rejected-mappings and
+  dropped-indicators appendices — the guards are the selling point.
+- **API runs synchronously** and binds to `127.0.0.1`, using the server's own
+  `ANTHROPIC_API_KEY`. A background-job queue for large PDFs and auth for hosted
+  deployments are deferred (documented in the roadmap), keeping the local,
+  single-user default simple and avoiding shared-key/cost-attribution risk.

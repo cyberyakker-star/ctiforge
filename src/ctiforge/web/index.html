@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ctiforge</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2029; --border: #2b3440; --fg: #e6edf3;
+    --muted: #8b98a5; --accent: #4a9eff; --bad: #ff6b6b;
+    --good: #3fb950; --warnbg: #3a2e12; --warnfg: #f0c674;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 28px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0; font-size: 22px; }
+  h1 span { color: var(--accent); }
+  .tagline { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 28px 80px; }
+  .banner { background: var(--warnbg); color: var(--warnfg); border: 1px solid #5c4a1a;
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input[type=text], textarea { width: 100%; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 10px; font: inherit; }
+  textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, monospace;
+    font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  button { background: var(--accent); color: #04101f; border: 0; border-radius: 6px;
+    padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent);
+    border: 1px solid var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--border);
+    font-weight: 500; padding: 6px 14px; }
+  .tabs button.active { color: var(--fg); border-color: var(--accent); }
+  #drop { border: 2px dashed var(--border); border-radius: 8px; padding: 26px;
+    text-align: center; color: var(--muted); cursor: pointer; }
+  #drop.hover { border-color: var(--accent); color: var(--fg); }
+  .status { color: var(--muted); font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .error { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border);
+    vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px;
+    font-family: ui-monospace, monospace; }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 20px;
+    border: 1px solid var(--border); color: var(--muted); }
+  .sect-title { font-size: 16px; margin: 22px 0 6px; }
+  .rejected { border-color: #5c2a2a; }
+  .rejected .sect-title { color: var(--bad); }
+  .muted { color: var(--muted); }
+  .hidden { display: none; }
+  .dl { margin-left: auto; display: flex; gap: 8px; }
+  blockquote { margin: 0; color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1>cti<span>forge</span></h1>
+  <div class="tagline">Report → structured, validated intelligence — with hallucination guards.</div>
+</header>
+<main>
+  <div class="banner" id="banner">⚠️ Analysis is machine-drafted and requires human review. Indicators are extracted deterministically; the narrative and ATT&CK mappings are LLM-generated.</div>
+
+  <div class="card">
+    <div class="tabs">
+      <button data-tab="url" class="active">URL</button>
+      <button data-tab="text">Paste text</button>
+      <button data-tab="pdf">Upload PDF</button>
+    </div>
+
+    <div id="tab-url">
+      <label>Report URL</label>
+      <input type="text" id="url" placeholder="https://www.cisa.gov/news-events/cybersecurity-advisories/..." />
+    </div>
+    <div id="tab-text" class="hidden">
+      <label>Report text</label>
+      <textarea id="text" placeholder="Paste the threat report text here..."></textarea>
+    </div>
+    <div id="tab-pdf" class="hidden">
+      <div id="drop">Drop a PDF here, or click to choose a file.
+        <input type="file" id="file" accept=".pdf,.txt,.md" class="hidden" /></div>
+      <div class="muted" id="filename" style="margin-top:8px"></div>
+    </div>
+
+    <div class="row">
+      <button id="analyze">Analyze</button>
+      <label style="margin:0"><input type="checkbox" id="private" /> include private/reserved IPs</label>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="dl card" style="display:flex;align-items:center;gap:10px">
+      <strong>Downloads:</strong>
+      <button class="secondary" data-dl="json">report.json</button>
+      <button class="secondary" data-dl="md">report.md</button>
+      <button class="secondary" data-dl="csv">iocs.csv</button>
+    </div>
+    <div id="report"></div>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+let currentTab = "url";
+let lastPayload = null;
+
+document.querySelectorAll(".tabs button").forEach((b) => {
+  b.onclick = () => {
+    currentTab = b.dataset.tab;
+    document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    for (const t of ["url", "text", "pdf"]) $("#tab-" + t).classList.toggle("hidden", t !== currentTab);
+  };
+});
+
+const drop = $("#drop"), fileInput = $("#file");
+drop.onclick = () => fileInput.click();
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("hover"); };
+drop.ondragleave = () => drop.classList.remove("hover");
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("hover");
+  fileInput.files = e.dataTransfer.files; showFile(); };
+fileInput.onchange = showFile;
+function showFile() { $("#filename").textContent = fileInput.files[0]?.name || ""; }
+
+function esc(s) { return (s ?? "").toString().replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+function setStatus(msg, isError) {
+  const el = $("#status"); el.textContent = msg; el.classList.toggle("error", !!isError);
+}
+
+async function analyze() {
+  const btn = $("#analyze"); btn.disabled = true;
+  $("#results").classList.add("hidden");
+  setStatus("Working… ingest → extract → ATT&CK validation → LLM analysis. This can take 10–60s.");
+  try {
+    let resp;
+    if (currentTab === "pdf") {
+      if (!fileInput.files[0]) throw new Error("Choose a file first.");
+      const fd = new FormData();
+      fd.append("file", fileInput.files[0]);
+      resp = await fetch("/api/upload?include_private=" + $("#private").checked, { method: "POST", body: fd });
+    } else {
+      const body = { include_private: $("#private").checked };
+      if (currentTab === "url") body.source = $("#url").value.trim();
+      else body.text = $("#text").value;
+      if (!(body.source || body.text)) throw new Error("Enter a URL or some text first.");
+      resp = await fetch("/api/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    }
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || ("HTTP " + resp.status));
+    lastPayload = data;
+    render(data.analysis);
+    setStatus("Done. Review the machine-drafted analysis before use.");
+  } catch (e) {
+    setStatus(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("#analyze").onclick = analyze;
+
+function table(headers, rows) {
+  return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function render(a) {
+  const t = a.targeting || { sectors: [], regions: [] };
+  let h = "";
+  h += `<div class="card"><div class="sect-title">${esc(a.title || "Threat Report")}</div>`;
+  h += `<div class="muted" style="font-size:12px">${esc(a.source_url_or_path || "")} · model: ${esc(a.model || "")}</div>`;
+  h += `<p>${esc(a.summary) || "<span class='muted'>No summary produced.</span>"}</p>`;
+  h += `<div class="muted" style="font-size:13px">`;
+  h += `<div><b>Threat actors:</b> ${esc(a.threat_actors.join(", ")) || "—"}</div>`;
+  h += `<div><b>Malware/tools:</b> ${esc(a.malware_families.join(", ")) || "—"}</div>`;
+  h += `<div><b>Sectors:</b> ${esc(t.sectors.join(", ")) || "—"} · <b>Regions:</b> ${esc(t.regions.join(", ")) || "—"}</div>`;
+  h += `</div></div>`;
+
+  h += `<div class="card"><div class="sect-title">ATT&CK Techniques (${a.techniques.length})</div>`;
+  h += a.techniques.length ? table(
+    ["ID", "Name", "Tactics", "Conf.", "Evidence"],
+    a.techniques.map((x) => [esc(x.technique_id), esc(x.name), esc(x.tactics.join(", ")),
+      esc(x.confidence), `<blockquote>“${esc(x.evidence)}”</blockquote>`])
+  ) : "<span class='muted'>None validated.</span>";
+  h += `</div>`;
+
+  const byType = {};
+  for (const i of a.indicators) (byType[i.type] ||= []).push(i);
+  h += `<div class="card"><div class="sect-title">Indicators (${a.indicators.length})</div>`;
+  const ctx = {};
+  for (const c of a.indicator_context) ctx[c.value.toLowerCase()] = c;
+  for (const ty of Object.keys(byType).sort()) {
+    h += `<div style="margin-top:10px"><span class="pill">${esc(ty)} · ${byType[ty].length}</span></div>`;
+    h += table(["Value", "Original", "Role", "Context"], byType[ty].map((i) => {
+      const c = ctx[i.value.toLowerCase()] || {};
+      return [`<code>${esc(i.value)}</code>`, esc(i.defanged_original || ""), esc(c.role || ""), esc(c.context || "")];
+    }));
+  }
+  if (!a.indicators.length) h += "<span class='muted'>None extracted.</span>";
+  h += `</div>`;
+
+  h += `<div class="card rejected"><div class="sect-title">Rejected ATT&CK mappings (${a.rejected_mappings.length})</div>`;
+  h += `<div class="muted" style="font-size:12px">Proposed by the LLM but failed validation — surfaced, not hidden.</div>`;
+  h += a.rejected_mappings.length ? table(["Proposed ID", "Reason", "Behavior"],
+    a.rejected_mappings.map((r) => [esc(r.technique_id), esc(r.reason), esc(r.behavior)])) :
+    "<span class='muted'>None.</span>";
+  h += `</div>`;
+
+  if (a.dropped_indicators.length) {
+    h += `<div class="card rejected"><div class="sect-title">Dropped LLM indicators (${a.dropped_indicators.length})</div>`;
+    h += `<div class="muted" style="font-size:12px">Referenced by the LLM but not in the extracted list — dropped.</div>`;
+    h += `<ul>${a.dropped_indicators.map((v) => `<li><code>${esc(v)}</code></li>`).join("")}</ul></div>`;
+  }
+
+  $("#report").innerHTML = h;
+  $("#results").classList.remove("hidden");
+}
+
+function download(kind) {
+  if (!lastPayload) return;
+  const map = { json: ["report.json", lastPayload.json, "application/json"],
+    md: ["report.md", lastPayload.markdown, "text/markdown"],
+    csv: ["iocs.csv", lastPayload.csv, "text/csv"] };
+  const [name, content, type] = map[kind];
+  const blob = new Blob([content], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+document.querySelectorAll("[data-dl]").forEach((b) => (b.onclick = () => download(b.dataset.dl)));
+</script>
+</body>
+</html>

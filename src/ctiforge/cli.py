@@ -58,10 +58,10 @@ def analyze(
 
     # Imported here so `--version` / `--help` stay fast and dependency-light.
     from .analyze import AnalyzeError
-    from .analyze import analyze as run_analysis
-    from .attack import AttackError, AttackIndex
+    from .attack import AttackError
     from .extract import extract_indicators
     from .ingest import IngestError, ingest
+    from .pipeline import analyze_text, get_index
     from .render import render_all
 
     # Validate parameters BEFORE the pipeline try-block so click's usage-error
@@ -80,14 +80,18 @@ def analyze(
         typer.echo(f"      {len(indicators)} indicator(s) extracted.")
 
         typer.echo("[3/5] Loading ATT&CK dataset ...")
-        attack_index = AttackIndex.load()
+        attack_index = get_index()
 
         typer.echo("[4/5] Running LLM analysis ...")
-        analysis = run_analysis(
-            report.text, indicators, model=model, attack_index=attack_index
+        analysis = analyze_text(
+            report.text,
+            title=report.title,
+            source_url_or_path=report.source_url_or_path,
+            include_private=include_private,
+            model=model,
+            index=attack_index,
+            indicators=indicators,
         )
-        analysis.title = report.title
-        analysis.source_url_or_path = report.source_url_or_path
         analysis.retrieved_at = report.retrieved_at
 
         out_dir = output or Path(
@@ -112,6 +116,28 @@ def analyze(
     except Exception as exc:  # noqa: BLE001 - top-level guard: fail loudly, non-zero exit
         typer.secho(f"unexpected error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address (localhost by default)."),
+    port: int = typer.Option(8000, "--port", help="Port to listen on."),
+) -> None:
+    """Launch the web UI + REST API (requires the 'server' extra)."""
+    try:
+        import uvicorn
+
+        from .api import app as api_app
+    except ImportError as exc:
+        typer.secho(
+            "The web UI / API requires extra dependencies. Install with:\n"
+            '  pip install "ctiforge[server]"',
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"ctiforge serving on http://{host}:{port}  (Ctrl-C to stop)")
+    uvicorn.run(api_app, host=host, port=port)
 
 
 if __name__ == "__main__":  # pragma: no cover
