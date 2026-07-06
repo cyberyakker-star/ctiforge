@@ -1,0 +1,138 @@
+{
+  "title": "APT-EXAMPLE Campaign Targeting Energy & Healthcare (Demo)",
+  "source_url_or_path": "bundled demo report",
+  "retrieved_at": "2026-01-15T12:00:00+00:00",
+  "model": "demo (bundled sample — no live model call)",
+  "summary": "This bundled sample demonstrates ctiforge's output on a realistic intrusion report. The threat actor tracked as FANCY EXAMPLE (aka APT-EXAMPLE) targeted energy and healthcare organizations across North America and Europe. Initial access was gained through spearphishing attachments that executed PowerShell loaders, establishing persistence via registry run keys before deploying the EXAMPLELOADER backdoor. The actors performed credential dumping, internal discovery, and lateral movement over RDP, then exfiltrated archived data over an HTTPS command-and-control channel and staged ransomware for impact.",
+  "threat_actors": ["FANCY EXAMPLE", "APT-EXAMPLE"],
+  "malware_families": ["EXAMPLELOADER", "GRIMCRYPT"],
+  "targeting": {
+    "sectors": ["Energy", "Healthcare"],
+    "regions": ["North America", "Europe"]
+  },
+  "techniques": [
+    {
+      "technique_id": "T1566.001",
+      "name": "Spearphishing Attachment",
+      "tactics": ["initial-access"],
+      "behavior": "Actors sent spearphishing emails with malicious attachments to gain initial access.",
+      "evidence": "Initial access was gained through spearphishing emails containing malicious attachments.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1059.001",
+      "name": "PowerShell",
+      "tactics": ["execution"],
+      "behavior": "A PowerShell loader executed to download the second-stage payload.",
+      "evidence": "The attachment executed a PowerShell command that downloaded a second-stage payload.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1547.001",
+      "name": "Registry Run Keys / Startup Folder",
+      "tactics": ["persistence", "privilege-escalation"],
+      "behavior": "Persistence was established via a registry run key.",
+      "evidence": "EXAMPLELOADER established persistence by writing a registry run key under CurrentVersion\\Run.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1055",
+      "name": "Process Injection",
+      "tactics": ["defense-evasion", "privilege-escalation"],
+      "behavior": "The loader injected into a legitimate process to evade detection.",
+      "evidence": "The loader injected its payload into a legitimate svchost.exe process to evade endpoint defenses.",
+      "confidence": "medium"
+    },
+    {
+      "technique_id": "T1003.001",
+      "name": "LSASS Memory",
+      "tactics": ["credential-access"],
+      "behavior": "Credentials were dumped from LSASS memory.",
+      "evidence": "The actors dumped credentials from LSASS memory using a renamed copy of a common tool.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1082",
+      "name": "System Information Discovery",
+      "tactics": ["discovery"],
+      "behavior": "Host and domain information was enumerated after access.",
+      "evidence": "After gaining access the operators enumerated system and domain information.",
+      "confidence": "medium"
+    },
+    {
+      "technique_id": "T1021.001",
+      "name": "Remote Desktop Protocol",
+      "tactics": ["lateral-movement"],
+      "behavior": "Lateral movement was performed over RDP.",
+      "evidence": "Lateral movement was performed to additional hosts over the Remote Desktop Protocol.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1560.001",
+      "name": "Archive via Utility",
+      "tactics": ["collection"],
+      "behavior": "Collected data was archived prior to exfiltration.",
+      "evidence": "Collected files were compressed into a password-protected archive prior to exfiltration.",
+      "confidence": "medium"
+    },
+    {
+      "technique_id": "T1071.001",
+      "name": "Web Protocols",
+      "tactics": ["command-and-control"],
+      "behavior": "C2 communication used HTTPS web protocols.",
+      "evidence": "The malware communicated with command-and-control infrastructure over HTTPS.",
+      "confidence": "high"
+    },
+    {
+      "technique_id": "T1041",
+      "name": "Exfiltration Over C2 Channel",
+      "tactics": ["exfiltration"],
+      "behavior": "Archived data was exfiltrated over the existing C2 channel.",
+      "evidence": "The archived data was exfiltrated over the same HTTPS command-and-control channel.",
+      "confidence": "medium"
+    },
+    {
+      "technique_id": "T1486",
+      "name": "Data Encrypted for Impact",
+      "tactics": ["impact"],
+      "behavior": "GRIMCRYPT ransomware encrypted files for impact.",
+      "evidence": "In the final stage, the GRIMCRYPT ransomware encrypted files across affected hosts.",
+      "confidence": "high"
+    }
+  ],
+  "indicator_context": [
+    {"value": "evil-c2.net", "role": "c2", "context": "Primary command-and-control domain."},
+    {"value": "45.77.88.99", "role": "c2", "context": "Command-and-control server IP address."},
+    {"value": "185.220.101.42", "role": "exfiltration", "context": "Secondary host used for data exfiltration."},
+    {"value": "https://malicious.example.org/update", "role": "payload_delivery", "context": "Second-stage payload delivery URL."},
+    {"value": "phish@evil-c2.net", "role": "phishing", "context": "Sender address for the spearphishing emails."},
+    {"value": "44d88612fea8a8f36de82e1278abb02f", "role": "payload_delivery", "context": "MD5 of the EXAMPLELOADER dropper."},
+    {"value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f", "role": "payload_delivery", "context": "SHA256 of the GRIMCRYPT ransomware."}
+  ],
+  "rejected_mappings": [
+    {
+      "technique_id": "T9999",
+      "reason": "unknown technique ID (not present in ATT&CK enterprise)",
+      "behavior": "Model proposed a fabricated technique ID.",
+      "evidence": "The malware communicated with command-and-control infrastructure over HTTPS."
+    },
+    {
+      "technique_id": "T1490",
+      "reason": "evidence sentence not found verbatim in the report",
+      "behavior": "Model claimed shadow-copy deletion without supporting text.",
+      "evidence": "The ransomware deleted volume shadow copies to inhibit recovery."
+    }
+  ],
+  "dropped_indicators": ["totally-invented-c2.example"],
+  "indicators": [
+    {"value": "evil-c2.net", "type": "domain", "defanged_original": "evil-c2[.]net"},
+    {"value": "malicious.example.org", "type": "domain", "defanged_original": "malicious.example[.]org"},
+    {"value": "45.77.88.99", "type": "ipv4", "defanged_original": null},
+    {"value": "185.220.101.42", "type": "ipv4", "defanged_original": "185.220.101[.]42"},
+    {"value": "https://malicious.example.org/update", "type": "url", "defanged_original": "hxxps://malicious.example[.]org/update"},
+    {"value": "phish@evil-c2.net", "type": "email", "defanged_original": "phish@evil-c2[.]net"},
+    {"value": "44d88612fea8a8f36de82e1278abb02f", "type": "md5", "defanged_original": null},
+    {"value": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3", "type": "sha1", "defanged_original": null},
+    {"value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f", "type": "sha256", "defanged_original": null}
+  ]
+}

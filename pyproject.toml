@@ -48,8 +48,8 @@ ctiforge-mcp = "ctiforge.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ctiforge"]
-# Ship the web UI page as package data.
-include = ["src/ctiforge/web/*.html"]
+# Ship the web UI page and bundled demo data as package data.
+include = ["src/ctiforge/web/*.html", "src/ctiforge/web/*.json"]
 
 [tool.ruff]
 line-length = 100

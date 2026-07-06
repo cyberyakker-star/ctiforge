@@ -3,119 +3,287 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ctiforge</title>
+<title>ctiforge — IOC Triage Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E" />
 <style>
   :root {
-    --bg: #0f1419; --panel: #1a2029; --border: #2b3440; --fg: #e6edf3;
-    --muted: #8b98a5; --accent: #4a9eff; --bad: #ff6b6b;
-    --good: #3fb950; --warnbg: #3a2e12; --warnfg: #f0c674;
+    --bg: #0b0f17; --bg2: #0d1320; --panel: #141b2b; --panel2: #1a2336;
+    --border: #243049; --fg: #e8edf6; --muted: #8896ad; --faint: #5a6b8c;
+    --accent: #5b9dff; --accent2: #7c5cff;
+    --ip: #5b9dff; --domain: #3fb950; --url: #e3a008; --hash: #a371f7; --email: #ff7b72;
+    --high: #2ea043; --medium: #bb8009; --low: #4b5b78;
+    --warnbg: #2a2410; --warnfg: #e3c766; --bad: #ff6b6b;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg);
-    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 20px 28px; border-bottom: 1px solid var(--border); }
-  h1 { margin: 0; font-size: 22px; }
-  h1 span { color: var(--accent); }
-  .tagline { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  main { max-width: 1000px; margin: 0 auto; padding: 24px 28px 80px; }
-  .banner { background: var(--warnbg); color: var(--warnfg); border: 1px solid #5c4a1a;
-    border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
-  .card { background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 18px; margin-bottom: 18px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-  input[type=text], textarea { width: 100%; background: var(--bg); color: var(--fg);
-    border: 1px solid var(--border); border-radius: 6px; padding: 10px; font: inherit; }
-  textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, monospace;
-    font-size: 13px; }
-  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-  button { background: var(--accent); color: #04101f; border: 0; border-radius: 6px;
-    padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
-  button.secondary { background: transparent; color: var(--accent);
-    border: 1px solid var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(124,92,255,.12), transparent),
+      radial-gradient(1000px 500px at -10% 10%, rgba(91,157,255,.10), transparent),
+      var(--bg);
+    color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  header { padding: 22px 30px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: linear-gradient(180deg, rgba(20,27,43,.7), transparent); }
+  .logo { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .logo b { color: var(--accent); }
+  .logo .chip { font-size: 11px; font-weight: 600; color: var(--accent2);
+    border: 1px solid var(--accent2); border-radius: 20px; padding: 2px 9px; margin-left: 8px;
+    vertical-align: middle; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  .ghlink { color: var(--muted); text-decoration: none; font-size: 13px; border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 8px; }
+  .ghlink:hover { color: var(--fg); border-color: var(--accent); }
+  main { max-width: 1240px; margin: 0 auto; padding: 22px 30px 90px; }
+  .banner { background: var(--warnbg); color: var(--warnfg); border: 1px solid #4a3d14;
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: linear-gradient(180deg, var(--panel), var(--bg2));
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; letter-spacing: .2px; }
+  .card h2 .count { color: var(--muted); font-weight: 500; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: .5px; }
+  textarea, input[type=text] { width: 100%; background: #0a0e18; color: var(--fg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px; font: inherit; }
+  textarea { min-height: 200px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12.5px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--border);
-    font-weight: 500; padding: 6px 14px; }
-  .tabs button.active { color: var(--fg); border-color: var(--accent); }
-  #drop { border: 2px dashed var(--border); border-radius: 8px; padding: 26px;
-    text-align: center; color: var(--muted); cursor: pointer; }
+    font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .tabs button.active { color: var(--fg); border-color: var(--accent); background: rgba(91,157,255,.08); }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  button.act { background: var(--accent); color: #05122b; border: 0; border-radius: 8px;
+    padding: 10px 16px; font: inherit; font-weight: 650; cursor: pointer; }
+  button.act.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button.act.alt { background: var(--accent2); color: #0a0518; }
+  button.act:disabled { opacity: .5; cursor: default; }
+  #drop { border: 2px dashed var(--border); border-radius: 10px; padding: 26px; text-align: center;
+    color: var(--muted); cursor: pointer; font-size: 13px; }
   #drop.hover { border-color: var(--accent); color: var(--fg); }
   .status { color: var(--muted); font-size: 13px; margin-top: 12px; min-height: 18px; }
-  .error { color: var(--bad); }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border);
-    vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; }
-  code { background: var(--bg); padding: 1px 5px; border-radius: 4px;
-    font-family: ui-monospace, monospace; }
-  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 20px;
-    border: 1px solid var(--border); color: var(--muted); }
-  .sect-title { font-size: 16px; margin: 22px 0 6px; }
-  .rejected { border-color: #5c2a2a; }
-  .rejected .sect-title { color: var(--bad); }
-  .muted { color: var(--muted); }
+  .status.err { color: var(--bad); }
+
+  /* pipeline stages */
+  .stages { display: flex; gap: 6px; margin: 6px 0 2px; flex-wrap: wrap; }
+  .stage { flex: 1; min-width: 90px; font-size: 11px; color: var(--faint); text-align: center;
+    border-top: 3px solid var(--border); padding-top: 6px; transition: color .3s, border-color .3s; }
+  .stage.active { color: var(--accent); border-color: var(--accent); }
+  .stage.done { color: var(--high); border-color: var(--high); }
+
+  /* stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 620px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: linear-gradient(180deg, var(--panel2), var(--bg2)); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px; }
+  .tile .n { font-size: 30px; font-weight: 720; letter-spacing: -1px; }
+  .tile .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tile.guard .n { color: var(--warnfg); }
+
+  /* ATT&CK matrix */
+  .matrix-wrap { overflow-x: auto; padding-bottom: 6px; }
+  .matrix { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 8px; min-width: 900px; }
+  .col-h { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .4px; padding: 0 2px 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+    display: flex; justify-content: space-between; gap: 6px; }
+  .col-h .c { color: var(--faint); }
+  .cell { display: flex; flex-direction: column; gap: 6px; }
+  .tq { border-radius: 8px; padding: 8px 9px; font-size: 12px; cursor: default; border: 1px solid transparent;
+    background: var(--panel2); transition: transform .12s; }
+  .tq:hover { transform: translateY(-2px); }
+  .tq .id { font-weight: 700; font-size: 11px; }
+  .tq .nm { color: var(--muted); font-size: 11px; line-height: 1.3; margin-top: 1px; }
+  .tq.high { background: rgba(46,160,67,.16); border-color: rgba(46,160,67,.5); }
+  .tq.medium { background: rgba(187,128,9,.16); border-color: rgba(187,128,9,.5); }
+  .tq.low { background: rgba(75,91,120,.22); border-color: rgba(75,91,120,.6); }
+  .tq .id .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+  .tq.high .dot { background: var(--high); } .tq.medium .dot { background: var(--medium); }
+  .tq.low .dot { background: var(--low); }
+  .empty-cell { color: var(--faint); font-size: 18px; text-align: center; opacity: .4; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 12px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* IOC groups */
+  .ioc-group { margin-bottom: 14px; }
+  .ioc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .type-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; color: #06101f; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td code { background: #0a0e18; padding: 2px 6px; border-radius: 5px; font-size: 12px; }
+  .role { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 20px; padding: 1px 8px; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  .rejected { border-color: #4a2530; }
+  .rejected h2 { color: var(--bad); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .meta b { color: var(--fg); }
+  .kv { display: flex; gap: 8px; margin: 3px 0; }
+  .kv .k { color: var(--muted); min-width: 96px; font-size: 13px; }
+  .dl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .hidden { display: none; }
-  .dl { margin-left: auto; display: flex; gap: 8px; }
-  blockquote { margin: 0; color: var(--muted); font-style: italic; }
+  blockquote { margin: 4px 0 0; color: var(--muted); font-style: italic; font-size: 12px;
+    border-left: 2px solid var(--border); padding-left: 8px; }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
+  .fade { animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 </style>
 </head>
 <body>
 <header>
-  <h1>cti<span>forge</span></h1>
-  <div class="tagline">Report → structured, validated intelligence — with hallucination guards.</div>
-</header>
-<main>
-  <div class="banner" id="banner">⚠️ Analysis is machine-drafted and requires human review. Indicators are extracted deterministically; the narrative and ATT&CK mappings are LLM-generated.</div>
-
-  <div class="card">
-    <div class="tabs">
-      <button data-tab="url" class="active">URL</button>
-      <button data-tab="text">Paste text</button>
-      <button data-tab="pdf">Upload PDF</button>
-    </div>
-
-    <div id="tab-url">
-      <label>Report URL</label>
-      <input type="text" id="url" placeholder="https://www.cisa.gov/news-events/cybersecurity-advisories/..." />
-    </div>
-    <div id="tab-text" class="hidden">
-      <label>Report text</label>
-      <textarea id="text" placeholder="Paste the threat report text here..."></textarea>
-    </div>
-    <div id="tab-pdf" class="hidden">
-      <div id="drop">Drop a PDF here, or click to choose a file.
-        <input type="file" id="file" accept=".pdf,.txt,.md" class="hidden" /></div>
-      <div class="muted" id="filename" style="margin-top:8px"></div>
-    </div>
-
-    <div class="row">
-      <button id="analyze">Analyze</button>
-      <label style="margin:0"><input type="checkbox" id="private" /> include private/reserved IPs</label>
-    </div>
-    <div class="status" id="status"></div>
+  <div>
+    <div class="logo">cti<b>forge</b><span class="chip">IOC Triage Dashboard</span></div>
+    <div class="subtitle">Paste a threat report → deterministic IOC extraction + ATT&CK-mapped TTPs, with hallucination guards.</div>
   </div>
+  <div class="spacer"></div>
+  <a class="ghlink" href="https://github.com/cyberyakker-star/ctiforge" target="_blank" rel="noopener">GitHub ↗</a>
+</header>
 
-  <div id="results" class="hidden">
-    <div class="dl card" style="display:flex;align-items:center;gap:10px">
-      <strong>Downloads:</strong>
-      <button class="secondary" data-dl="json">report.json</button>
-      <button class="secondary" data-dl="md">report.md</button>
-      <button class="secondary" data-dl="csv">iocs.csv</button>
+<main>
+  <div class="banner" id="banner">⚠️ <b>Machine-drafted — requires human review.</b> Indicators are extracted deterministically (regex + validation); the ATT&CK mappings and context are LLM-generated. Every technique ID is validated against the real ATT&CK dataset and every mapping needs a verbatim evidence quote.</div>
+
+  <div class="grid">
+    <!-- INPUT -->
+    <div>
+      <div class="card">
+        <h2>Report input</h2>
+        <div class="tabs">
+          <button data-tab="text" class="active">Paste text</button>
+          <button data-tab="url">URL</button>
+          <button data-tab="pdf">PDF</button>
+        </div>
+        <div id="tab-text">
+          <label>Threat report text</label>
+          <textarea id="text"></textarea>
+        </div>
+        <div id="tab-url" class="hidden">
+          <label>Report URL</label>
+          <input type="text" id="url" placeholder="https://www.cisa.gov/news-events/cybersecurity-advisories/..." />
+        </div>
+        <div id="tab-pdf" class="hidden">
+          <div id="drop">Drop a PDF here, or click to choose.
+            <input type="file" id="file" accept=".pdf,.txt,.md" class="hidden" /></div>
+          <div class="meta" id="filename" style="margin-top:8px"></div>
+        </div>
+
+        <div class="btns">
+          <button class="act" id="extract">⚡ Extract IOCs</button>
+          <button class="act alt" id="analyze">🧠 Full analysis</button>
+          <button class="act ghost" id="demo">Load demo</button>
+        </div>
+        <label style="margin-top:12px;text-transform:none;letter-spacing:0;color:var(--muted)">
+          <input type="checkbox" id="private" /> include private/reserved IPs</label>
+        <div class="stages" id="stages"></div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="card" id="summary-card">
+        <h2>Report summary</h2>
+        <div id="summary" class="meta">Load the demo or run an analysis to populate.</div>
+      </div>
     </div>
-    <div id="report"></div>
+
+    <!-- RESULTS -->
+    <div id="results">
+      <div class="tiles" id="tiles"></div>
+
+      <div class="card">
+        <h2>ATT&amp;CK matrix <span class="count" id="ttp-count"></span></h2>
+        <div class="matrix-wrap"><div class="matrix" id="matrix"></div></div>
+        <div class="legend">
+          <span><i style="background:var(--high)"></i> high confidence</span>
+          <span><i style="background:var(--medium)"></i> medium</span>
+          <span><i style="background:var(--low)"></i> low</span>
+          <span style="color:var(--faint)">— hover a technique for its evidence quote</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Indicators of Compromise <span class="count" id="ioc-count"></span></h2>
+        <div id="iocs"></div>
+      </div>
+
+      <div class="two">
+        <div class="card rejected">
+          <h2>Rejected ATT&amp;CK mappings <span class="count" id="rej-count"></span></h2>
+          <div class="meta" style="font-size:12px;margin-bottom:8px">Proposed by the model but failed validation or lacked a verbatim quote — surfaced, never silently kept.</div>
+          <div id="rejected"></div>
+        </div>
+        <div class="card rejected">
+          <h2>Dropped indicators <span class="count" id="drop-count"></span></h2>
+          <div class="meta" style="font-size:12px;margin-bottom:8px">Values the model referenced that were not in the deterministic extraction — dropped.</div>
+          <div id="dropped"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Downloads</h2>
+        <div class="dl">
+          <button class="act ghost" data-dl="json">report.json</button>
+          <button class="act ghost" data-dl="md">report.md</button>
+          <button class="act ghost" data-dl="csv">iocs.csv</button>
+          <span class="meta" style="font-size:12px">— SIEM/blocklist-ready</span>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
+
 <script>
 const $ = (s) => document.querySelector(s);
-let currentTab = "url";
+const TACTICS = [
+  ["reconnaissance", "Reconnaissance"], ["resource-development", "Resource Development"],
+  ["initial-access", "Initial Access"], ["execution", "Execution"], ["persistence", "Persistence"],
+  ["privilege-escalation", "Privilege Escalation"], ["defense-evasion", "Defense Evasion"],
+  ["credential-access", "Credential Access"], ["discovery", "Discovery"],
+  ["lateral-movement", "Lateral Movement"], ["collection", "Collection"],
+  ["command-and-control", "Command & Control"], ["exfiltration", "Exfiltration"], ["impact", "Impact"],
+];
+const TYPE_COLORS = { ipv4:"--ip", ipv6:"--ip", domain:"--domain", url:"--url",
+  md5:"--hash", sha1:"--hash", sha256:"--hash", email:"--email" };
+const STAGES = ["Ingest", "Extract IOCs", "ATT&CK", "Analyze", "Render"];
+
+const SAMPLE_TEXT = `CISA Cybersecurity Advisory (Sample)
+
+Summary
+The threat actor tracked as FANCY EXAMPLE (aka APT-EXAMPLE) targeted energy and
+healthcare organizations across North America and Europe, deploying the
+EXAMPLELOADER backdoor and GRIMCRYPT ransomware.
+
+Technical Details
+Initial access was gained through spearphishing emails containing malicious
+attachments. The attachment executed a PowerShell command that downloaded a
+second-stage payload. EXAMPLELOADER established persistence by writing a registry
+run key. The malware communicated with command-and-control infrastructure over HTTPS.
+
+Indicators of Compromise
+Domain: evil-c2[.]net
+IPv4: 45.77.88.99
+IPv4: 185.220.101[.]42
+URL: hxxps://malicious.example[.]org/update
+Email: phish@evil-c2[.]net
+MD5: 44d88612fea8a8f36de82e1278abb02f
+SHA256: 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f`;
+
+let currentTab = "text";
 let lastPayload = null;
+
+$("#text").value = SAMPLE_TEXT;
 
 document.querySelectorAll(".tabs button").forEach((b) => {
   b.onclick = () => {
     currentTab = b.dataset.tab;
     document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("active"));
     b.classList.add("active");
-    for (const t of ["url", "text", "pdf"]) $("#tab-" + t).classList.toggle("hidden", t !== currentTab);
+    for (const t of ["text", "url", "pdf"]) $("#tab-" + t).classList.toggle("hidden", t !== currentTab);
   };
 });
 
@@ -123,119 +291,193 @@ const drop = $("#drop"), fileInput = $("#file");
 drop.onclick = () => fileInput.click();
 drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("hover"); };
 drop.ondragleave = () => drop.classList.remove("hover");
-drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("hover");
-  fileInput.files = e.dataTransfer.files; showFile(); };
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("hover"); fileInput.files = e.dataTransfer.files; showFile(); };
 fileInput.onchange = showFile;
 function showFile() { $("#filename").textContent = fileInput.files[0]?.name || ""; }
 
-function esc(s) { return (s ?? "").toString().replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+function esc(s) { return (s ?? "").toString().replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+function setStatus(m, err) { const e = $("#status"); e.textContent = m; e.classList.toggle("err", !!err); }
 
-function setStatus(msg, isError) {
-  const el = $("#status"); el.textContent = msg; el.classList.toggle("error", !!isError);
+function renderStages(active, done) {
+  $("#stages").innerHTML = STAGES.map((s, i) => {
+    const cls = i < done ? "done" : i === active ? "active pulse" : "";
+    return `<div class="stage ${cls}">${esc(s)}</div>`;
+  }).join("");
+}
+async function animateStages(upto) {
+  for (let i = 0; i <= upto; i++) { renderStages(i, i); await new Promise((r) => setTimeout(r, 180)); }
+  renderStages(-1, upto + 1);
 }
 
-async function analyze() {
-  const btn = $("#analyze"); btn.disabled = true;
-  $("#results").classList.add("hidden");
-  setStatus("Working… ingest → extract → ATT&CK validation → LLM analysis. This can take 10–60s.");
+async function post(url, body, isForm) {
+  const opt = isForm ? { method: "POST", body } :
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  const r = await fetch(url, opt);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || ("HTTP " + r.status));
+  return d;
+}
+
+function busy(on) { document.querySelectorAll("button.act").forEach((b) => (b.disabled = on)); }
+
+async function doExtract() {
+  busy(true); setStatus("");
   try {
-    let resp;
+    renderStages(0, 0);
+    if (currentTab === "pdf") throw new Error("Use Full analysis for PDFs. Extract works on pasted text / URLs after ingest.");
+    const text = currentTab === "text" ? $("#text").value : null;
+    if (currentTab === "url") throw new Error("Extract runs on pasted text. Paste the report, or use Full analysis for a URL.");
+    if (!text || !text.trim()) throw new Error("Paste some report text first.");
+    await new Promise((r) => setTimeout(r, 200));
+    renderStages(1, 1);
+    const d = await post("/api/extract", { text, include_private: $("#private").checked });
+    renderStages(-1, 2);
+    // show IOCs only (no LLM); keep any existing TTP view cleared
+    lastPayload = null;
+    $("#summary").innerHTML = `<span class="meta">Deterministic extraction only — ${d.count} indicator(s). Run <b>Full analysis</b> or <b>Load demo</b> for ATT&CK mapping.</span>`;
+    renderTiles({ indicators: d.indicators, techniques: [], rejected_mappings: [], dropped_indicators: [] });
+    renderMatrix([]);
+    renderIOCs({ indicators: d.indicators, indicator_context: [] });
+    renderGuards({ rejected_mappings: [], dropped_indicators: [] });
+    setStatus(`Extracted ${d.count} indicator(s) — no API key needed.`);
+  } catch (e) { setStatus(e.message, true); }
+  finally { busy(false); }
+}
+
+async function doAnalyze() {
+  busy(true); setStatus("Running full pipeline — this needs an API key and can take 10–60s…");
+  try {
+    animateStages(3);
+    let d;
     if (currentTab === "pdf") {
-      if (!fileInput.files[0]) throw new Error("Choose a file first.");
-      const fd = new FormData();
-      fd.append("file", fileInput.files[0]);
-      resp = await fetch("/api/upload?include_private=" + $("#private").checked, { method: "POST", body: fd });
+      if (!fileInput.files[0]) throw new Error("Choose a PDF first.");
+      const fd = new FormData(); fd.append("file", fileInput.files[0]);
+      d = await post("/api/upload?include_private=" + $("#private").checked, fd, true);
     } else {
       const body = { include_private: $("#private").checked };
-      if (currentTab === "url") body.source = $("#url").value.trim();
-      else body.text = $("#text").value;
+      if (currentTab === "url") body.source = $("#url").value.trim(); else body.text = $("#text").value;
       if (!(body.source || body.text)) throw new Error("Enter a URL or some text first.");
-      resp = await fetch("/api/analyze", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-      });
+      d = await post("/api/analyze", body);
     }
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || ("HTTP " + resp.status));
-    lastPayload = data;
-    render(data.analysis);
-    setStatus("Done. Review the machine-drafted analysis before use.");
+    render(d); setStatus("Done. Review the machine-drafted analysis before use.");
   } catch (e) {
-    setStatus(e.message, true);
-  } finally {
-    btn.disabled = false;
-  }
-}
-$("#analyze").onclick = analyze;
-
-function table(headers, rows) {
-  return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>` +
-    `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    renderStages(-1, 0);
+    setStatus(e.message + "  —  showing bundled demo instead.", true);
+    try { render(await (await fetch("/api/demo")).json()); } catch (_) {}
+  } finally { busy(false); }
 }
 
-function render(a) {
+async function doDemo() {
+  busy(true); setStatus("");
+  try { await animateStages(4); render(await (await fetch("/api/demo")).json());
+    setStatus("Showing bundled demo analysis (no API key used)."); }
+  catch (e) { setStatus(e.message, true); }
+  finally { busy(false); }
+}
+
+$("#extract").onclick = doExtract;
+$("#analyze").onclick = doAnalyze;
+$("#demo").onclick = doDemo;
+
+function render(payload) {
+  lastPayload = payload;
+  const a = payload.analysis;
+  renderSummary(a); renderTiles(a); renderMatrix(a.techniques);
+  renderIOCs(a); renderGuards(a);
+  $("#ttp-count").textContent = a.techniques.length ? `· ${a.techniques.length} mapped` : "";
+  $("#results").classList.add("fade");
+}
+
+function renderSummary(a) {
   const t = a.targeting || { sectors: [], regions: [] };
-  let h = "";
-  h += `<div class="card"><div class="sect-title">${esc(a.title || "Threat Report")}</div>`;
-  h += `<div class="muted" style="font-size:12px">${esc(a.source_url_or_path || "")} · model: ${esc(a.model || "")}</div>`;
-  h += `<p>${esc(a.summary) || "<span class='muted'>No summary produced.</span>"}</p>`;
-  h += `<div class="muted" style="font-size:13px">`;
-  h += `<div><b>Threat actors:</b> ${esc(a.threat_actors.join(", ")) || "—"}</div>`;
-  h += `<div><b>Malware/tools:</b> ${esc(a.malware_families.join(", ")) || "—"}</div>`;
-  h += `<div><b>Sectors:</b> ${esc(t.sectors.join(", ")) || "—"} · <b>Regions:</b> ${esc(t.regions.join(", ")) || "—"}</div>`;
-  h += `</div></div>`;
+  $("#summary").innerHTML =
+    `<p style="margin-top:0">${esc(a.summary) || "<span class='meta'>No summary.</span>"}</p>` +
+    kv("Title", esc(a.title)) + kv("Actors", esc(a.threat_actors.join(", ")) || "—") +
+    kv("Malware", esc(a.malware_families.join(", ")) || "—") +
+    kv("Sectors", esc(t.sectors.join(", ")) || "—") + kv("Regions", esc(t.regions.join(", ")) || "—") +
+    kv("Model", `<span class="mono" style="font-size:12px">${esc(a.model)}</span>`);
+}
+function kv(k, v) { return `<div class="kv"><span class="k">${k}</span><span>${v}</span></div>`; }
 
-  h += `<div class="card"><div class="sect-title">ATT&CK Techniques (${a.techniques.length})</div>`;
-  h += a.techniques.length ? table(
-    ["ID", "Name", "Tactics", "Conf.", "Evidence"],
-    a.techniques.map((x) => [esc(x.technique_id), esc(x.name), esc(x.tactics.join(", ")),
-      esc(x.confidence), `<blockquote>“${esc(x.evidence)}”</blockquote>`])
-  ) : "<span class='muted'>None validated.</span>";
-  h += `</div>`;
+function renderTiles(a) {
+  const tactics = new Set();
+  (a.techniques || []).forEach((x) => x.tactics.forEach((t) => tactics.add(t)));
+  const guard = (a.rejected_mappings || []).length + (a.dropped_indicators || []).length;
+  const tiles = [
+    ["IOCs extracted", (a.indicators || []).length, ""],
+    ["ATT&CK techniques", (a.techniques || []).length, ""],
+    ["Tactics covered", tactics.size, ""],
+    ["Guards caught", guard, "guard"],
+  ];
+  $("#tiles").innerHTML = tiles.map(([l, n, c]) =>
+    `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+}
 
-  const byType = {};
-  for (const i of a.indicators) (byType[i.type] ||= []).push(i);
-  h += `<div class="card"><div class="sect-title">Indicators (${a.indicators.length})</div>`;
-  const ctx = {};
-  for (const c of a.indicator_context) ctx[c.value.toLowerCase()] = c;
-  for (const ty of Object.keys(byType).sort()) {
-    h += `<div style="margin-top:10px"><span class="pill">${esc(ty)} · ${byType[ty].length}</span></div>`;
-    h += table(["Value", "Original", "Role", "Context"], byType[ty].map((i) => {
+function renderMatrix(techniques) {
+  const byTactic = {};
+  TACTICS.forEach(([k]) => (byTactic[k] = []));
+  (techniques || []).forEach((t) => t.tactics.forEach((k) => { if (byTactic[k]) byTactic[k].push(t); }));
+  $("#matrix").innerHTML = TACTICS.map(([k, name]) => {
+    const items = byTactic[k];
+    const cells = items.length ? items.map((t) =>
+      `<div class="tq ${t.confidence}" title="${esc(t.evidence)}">
+         <div class="id"><span class="dot"></span>${esc(t.technique_id)}</div>
+         <div class="nm">${esc(t.name)}</div></div>`).join("") : `<div class="empty-cell">·</div>`;
+    return `<div><div class="col-h">${esc(name)}<span class="c">${items.length || ""}</span></div>
+      <div class="cell">${cells}</div></div>`;
+  }).join("");
+}
+
+function renderIOCs(a) {
+  const ctx = {}; (a.indicator_context || []).forEach((c) => (ctx[c.value.toLowerCase()] = c));
+  const byType = {}; (a.indicators || []).forEach((i) => (byType[i.type] ||= []).push(i));
+  $("#ioc-count").textContent = (a.indicators || []).length ? `· ${a.indicators.length}` : "";
+  if (!(a.indicators || []).length) { $("#iocs").innerHTML = "<span class='meta'>None extracted.</span>"; return; }
+  $("#iocs").innerHTML = Object.keys(byType).sort().map((ty) => {
+    const color = `var(${TYPE_COLORS[ty] || "--muted"})`;
+    const rows = byType[ty].map((i) => {
       const c = ctx[i.value.toLowerCase()] || {};
-      return [`<code>${esc(i.value)}</code>`, esc(i.defanged_original || ""), esc(c.role || ""), esc(c.context || "")];
-    }));
-  }
-  if (!a.indicators.length) h += "<span class='muted'>None extracted.</span>";
-  h += `</div>`;
+      return `<tr><td><code>${esc(i.value)}</code></td>
+        <td class="mono" style="color:var(--muted);font-size:12px">${esc(i.defanged_original || "")}</td>
+        <td>${c.role ? `<span class="role">${esc(c.role)}</span>` : ""}</td>
+        <td class="meta">${esc(c.context || "")}</td></tr>`;
+    }).join("");
+    return `<div class="ioc-group"><div class="ioc-head">
+        <span class="type-badge" style="background:${color}">${esc(ty.toUpperCase())}</span>
+        <span class="meta">${byType[ty].length}</span></div>
+      <table><thead><tr><th>Value</th><th>Original</th><th>Role</th><th>Context</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }).join("");
+}
 
-  h += `<div class="card rejected"><div class="sect-title">Rejected ATT&CK mappings (${a.rejected_mappings.length})</div>`;
-  h += `<div class="muted" style="font-size:12px">Proposed by the LLM but failed validation — surfaced, not hidden.</div>`;
-  h += a.rejected_mappings.length ? table(["Proposed ID", "Reason", "Behavior"],
-    a.rejected_mappings.map((r) => [esc(r.technique_id), esc(r.reason), esc(r.behavior)])) :
-    "<span class='muted'>None.</span>";
-  h += `</div>`;
-
-  if (a.dropped_indicators.length) {
-    h += `<div class="card rejected"><div class="sect-title">Dropped LLM indicators (${a.dropped_indicators.length})</div>`;
-    h += `<div class="muted" style="font-size:12px">Referenced by the LLM but not in the extracted list — dropped.</div>`;
-    h += `<ul>${a.dropped_indicators.map((v) => `<li><code>${esc(v)}</code></li>`).join("")}</ul></div>`;
-  }
-
-  $("#report").innerHTML = h;
-  $("#results").classList.remove("hidden");
+function renderGuards(a) {
+  const rej = a.rejected_mappings || [], drop = a.dropped_indicators || [];
+  $("#rej-count").textContent = rej.length ? `· ${rej.length}` : "";
+  $("#drop-count").textContent = drop.length ? `· ${drop.length}` : "";
+  $("#rejected").innerHTML = rej.length ? rej.map((r) =>
+    `<div style="margin-bottom:10px"><span class="mono" style="color:var(--bad)">${esc(r.technique_id)}</span>
+      <span class="meta"> — ${esc(r.reason)}</span>
+      ${r.evidence ? `<blockquote>“${esc(r.evidence)}”</blockquote>` : ""}</div>`).join("")
+    : "<span class='meta'>None.</span>";
+  $("#dropped").innerHTML = drop.length ? drop.map((v) =>
+    `<div style="margin-bottom:6px"><code>${esc(v)}</code></div>`).join("")
+    : "<span class='meta'>None.</span>";
 }
 
 function download(kind) {
-  if (!lastPayload) return;
+  if (!lastPayload) { setStatus("Run an analysis or load the demo first.", true); return; }
   const map = { json: ["report.json", lastPayload.json, "application/json"],
-    md: ["report.md", lastPayload.markdown, "text/markdown"],
-    csv: ["iocs.csv", lastPayload.csv, "text/csv"] };
+    md: ["report.md", lastPayload.markdown, "text/markdown"], csv: ["iocs.csv", lastPayload.csv, "text/csv"] };
   const [name, content, type] = map[kind];
+  if (content == null) { setStatus("That artifact isn't available for this view.", true); return; }
   const blob = new Blob([content], { type });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   URL.revokeObjectURL(a.href);
 }
 document.querySelectorAll("[data-dl]").forEach((b) => (b.onclick = () => download(b.dataset.dl)));
+
+// Auto-load the demo so the dashboard is populated on first paint.
+doDemo();
 </script>
 </body>
 </html>
