@@ -16,7 +16,9 @@ refusing to let the model invent indicators or fabricate technique IDs.
 Paste a threat report and watch ctiforge extract IOCs, map TTPs to MITRE ATT&CK,
 and render a clean matrix view — with the hallucination guards on display.
 
-![ctiforge IOC Triage Dashboard](docs/img/dashboard.png)
+![ctiforge IOC Triage Dashboard demo](docs/img/dashboard.gif)
+
+<sub>Animated demo — see the [full-resolution still](docs/img/dashboard.png).</sub>
 
 ```bash
 pip install "ctiforge[server]"
