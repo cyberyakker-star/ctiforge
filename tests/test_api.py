@@ -23,6 +23,38 @@ def test_index_serves_html(client):
     r = client.get("/")
     assert r.status_code == 200
     assert "ctiforge" in r.text.lower()
+    assert "IOC Triage Dashboard" in r.text
+
+
+def test_demo_endpoint_renders_full_dashboard(client):
+    """The bundled demo powers the dashboard with no API key."""
+    r = client.get("/api/demo")
+    assert r.status_code == 200
+    d = r.json()
+    a = d["analysis"]
+    assert a["review_banner"]
+    # rich enough to populate the matrix: multiple techniques across many tactics
+    assert len(a["techniques"]) >= 8
+    tactics = {t for x in a["techniques"] for t in x["tactics"]}
+    assert len(tactics) >= 8
+    # every demo technique is a real ATT&CK ID with a name and evidence
+    for t in a["techniques"]:
+        assert t["technique_id"].startswith("T")
+        assert t["name"] and t["evidence"]
+    # guards are demonstrated
+    assert a["rejected_mappings"] and a["dropped_indicators"]
+    # download artifacts bundled
+    assert "review_banner" in d["json"]
+    assert "value,type,context,confidence" in d["csv"]
+    assert "REQUIRES HUMAN REVIEW" in d["markdown"]
+
+
+def test_demo_indicator_context_values_are_in_indicators(client):
+    """Guard invariant holds in the sample: no context value is invented."""
+    a = client.get("/api/demo").json()["analysis"]
+    values = {i["value"].lower() for i in a["indicators"]}
+    for c in a["indicator_context"]:
+        assert c["value"].lower() in values
 
 
 def test_extract_endpoint(client):

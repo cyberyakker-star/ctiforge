@@ -11,6 +11,22 @@ refusing to let the model invent indicators or fabricate technique IDs.
 > Indicators are extracted by deterministic code, not the LLM. Every output
 > file carries this banner.
 
+## IOC Triage Dashboard
+
+Paste a threat report and watch ctiforge extract IOCs, map TTPs to MITRE ATT&CK,
+and render a clean matrix view — with the hallucination guards on display.
+
+![ctiforge IOC Triage Dashboard](docs/img/dashboard.png)
+
+```bash
+pip install "ctiforge[server]"
+ctiforge serve          # → http://127.0.0.1:8000
+```
+
+The dashboard loads a bundled demo on open, so it renders the full ATT&CK matrix
+with **no API key required**. IOC extraction runs live and keyless too; the
+LLM-backed TTP mapping uses your `ANTHROPIC_API_KEY` when you run a real analysis.
+
 ---
 
 ## Why
@@ -119,11 +135,14 @@ pip install "ctiforge[server]"
 ctiforge serve            # → http://127.0.0.1:8000
 ```
 
-Paste a URL, paste text, or drop a PDF; read the rendered report (summary,
-ATT&CK table with evidence, IOC tables, and the rejected-mappings / dropped-
-indicators appendices) and download the JSON/MD/CSV. The same endpoints are a
-REST API (`POST /api/analyze`, `POST /api/extract`, `GET /api/attack/{id}`,
-`POST /api/upload`) with OpenAPI docs at `/docs`.
+The [IOC Triage Dashboard](#ioc-triage-dashboard) (above): paste a URL / text or
+drop a PDF, watch the pipeline stages, and read the result as an **ATT&CK matrix**
+(tactics × techniques, colored by confidence, evidence on hover), IOC tables by
+type, and the rejected-mappings / dropped-indicators guard panels — then download
+the JSON/MD/CSV. It auto-loads a bundled demo so it's fully populated with **no
+key**. The same endpoints are a REST API (`GET /api/demo`, `POST /api/analyze`,
+`POST /api/extract`, `GET /api/attack/{id}`, `POST /api/upload`) with OpenAPI docs
+at `/docs`.
 
 > **Security:** the server binds to `127.0.0.1` and uses *its own*
 > `ANTHROPIC_API_KEY`. Don't expose it publicly without adding authentication.

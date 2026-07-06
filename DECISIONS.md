@@ -75,3 +75,21 @@ Ambiguity resolutions and notable choices made while building ctiforge v0.1.
   `ANTHROPIC_API_KEY`. A background-job queue for large PDFs and auth for hosted
   deployments are deferred (documented in the roadmap), keeping the local,
   single-user default simple and avoiding shared-key/cost-attribution risk.
+
+## IOC Triage Dashboard
+
+- **Demo-first, key-optional**: the dashboard auto-loads a bundled sample
+  analysis (`web/sample_analysis.json`) via `GET /api/demo`, so the full ATT&CK
+  matrix and every panel render with **no API key** — the intended path for
+  demos/portfolio viewing. Live IOC extraction (`/api/extract`) is also keyless;
+  only the LLM-backed full analysis needs a key.
+- **Sample data is clearly labeled**, uses real ATT&CK IDs/tactics (so the matrix
+  is accurate), and deliberately includes two rejected mappings and one dropped
+  indicator so the hallucination guards are visible. Its `indicator_context`
+  values are all present in `indicators` (a test enforces this invariant).
+- **ATT&CK matrix** is a client-side render over `TechniqueMapping.tactics`
+  (already in the analysis): 14 enterprise tactics as columns, techniques placed
+  under each of their tactics as chips colored by confidence. No new backend.
+- **Single self-contained HTML page**, vanilla JS, no build step (CI stays
+  Python-only). Verified via headless Chromium screenshot + a click-through of
+  the live Extract path.

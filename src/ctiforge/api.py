@@ -22,10 +22,17 @@ from .attack import AttackError
 from .config import REVIEW_BANNER
 from .extract import extract_indicators
 from .ingest import IngestError
+from .models import ReportAnalysis
 from .pipeline import analyze_source, analyze_text, get_index
 from .render import analysis_to_csv, analysis_to_json, analysis_to_markdown
 
 _WEB_DIR = Path(__file__).parent / "web"
+_SAMPLE_PATH = _WEB_DIR / "sample_analysis.json"
+
+
+def _load_demo() -> ReportAnalysis:
+    """Load the bundled sample analysis (lets the dashboard render with no key)."""
+    return ReportAnalysis.model_validate_json(_SAMPLE_PATH.read_text(encoding="utf-8"))
 
 
 class ExtractRequest(BaseModel):
@@ -66,6 +73,11 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
         return (_WEB_DIR / "index.html").read_text(encoding="utf-8")
+
+    @app.get("/api/demo")
+    def api_demo() -> dict[str, Any]:
+        """Return the bundled sample analysis so the dashboard renders with no key."""
+        return _analysis_payload(_load_demo())
 
     @app.post("/api/extract")
     def api_extract(req: ExtractRequest) -> dict[str, Any]:
