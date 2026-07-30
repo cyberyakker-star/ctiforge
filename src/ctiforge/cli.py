@@ -445,10 +445,12 @@ def doctor() -> None:
             "" if ok else f'pip install "ctiforge[{extra}]"',
         ))
 
+    # No fixed widths: on a narrow terminal the status text should wrap, not be
+    # truncated away. A diagnostic you can't read is not a diagnostic.
     t = Table(box=None, pad_edge=False, show_header=False)
-    t.add_column(width=3)
-    t.add_column(style="value", width=26)
-    t.add_column(style="muted")
+    t.add_column(width=3, no_wrap=True)
+    t.add_column(style="value", overflow="fold", max_width=26)
+    t.add_column(style="muted", overflow="fold")
     for ok, label, state, fix in rows:
         mark = ("✓", "ok") if ok else (("·", "faint") if ok is None else ("!", "warn"))
         t.add_row(Text(mark[0], style=mark[1]), label, state)
