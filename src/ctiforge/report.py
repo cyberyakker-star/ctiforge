@@ -211,7 +211,11 @@ def _review(analysis: ReportAnalysis) -> list[dict[str, Any]]:
             "id": f"r{n}",
             "kind": "Rejected mapping",
             "ref": r.technique_id,
-            "reason": r.reason + (f' Evidence offered: "{r.evidence}"' if r.evidence else ""),
+            "reason": (
+                f"{r.reason.rstrip('.')}. Evidence offered: “{r.evidence}”"
+                if r.evidence
+                else r.reason
+            ),
         })
     for value in analysis.dropped_indicators:
         n += 1

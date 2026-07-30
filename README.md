@@ -56,6 +56,56 @@ assistance and real guards against hallucination. **The guards are the product.*
 5. **Fails loudly, not silently.** Malformed PDFs, empty extractions, LLM
    refusals, or bad JSON produce clear errors and a non-zero exit code.
 
+### The guard catching a real hallucination
+
+Not hypothetical — this is `run.json` from an actual run. The model proposed
+**T1041** (Exfiltration Over C2 Channel), a real ATT&CK technique, and cited a
+sentence as its evidence. That sentence does not appear anywhere in the source
+report. The model invented its own justification.
+
+Guard #2 requires the evidence quote to be found verbatim in the source text, so
+the mapping never reached the report:
+
+```jsonc
+{
+  "id": "T1041",
+  "match": "evidence:“This sentence was invented and is not in the report.”",
+  "offset": null,                    // ← quote not locatable in the source
+  "validation": "ambiguous",
+  "provenance": "llm-mapped, rejected by guard",
+  "note": "evidence sentence not found verbatim in the report"
+}
+```
+
+Compare an accepted mapping from the same run — its quote resolves to a byte
+offset in the source, so it stands:
+
+```jsonc
+{
+  "id": "T1566.001",
+  "match": "evidence:“The actors gained initial access through spearphishing emails containing malicious attachments.”",
+  "offset": 357,                     // ← found at this position in the report
+  "validation": "validated"
+}
+```
+
+The rejected mapping is not discarded quietly either — it lands in the review
+queue for a human, with the fabricated quote attached so the call is auditable:
+
+```jsonc
+{
+  "id": "r2",
+  "kind": "Rejected mapping",
+  "ref": "T1041",
+  "reason": "evidence sentence not found verbatim in the report. Evidence offered: “This sentence was invented and is not in the report.”"
+}
+```
+
+A plausible technique ID with a fabricated citation is exactly the failure mode
+that makes LLM-assisted CTI untrustworthy, and exactly what ctiforge exists to
+catch. Note that a *wrong-but-real* ID is caught by a different guard: in the same
+run `T9999` was rejected as `not present in ATT&CK enterprise`.
+
 ## 60-second quickstart
 
 ```bash
