@@ -141,7 +141,14 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
     found: dict[tuple[str, str], Indicator] = {}
     url_hosts: set[str] = set()
 
-    def add(value: str, itype: IndicatorType) -> None:
+    def _context(offset: int) -> str:
+        """A one-line snippet of the analyzed text around ``offset``."""
+        lo = max(0, offset - 48)
+        hi = min(len(norm), offset + 80)
+        snippet = norm[lo:hi].replace("\n", " ").replace("\r", " ").strip()
+        return re.sub(r"\s{2,}", " ", snippet)
+
+    def add(value: str, itype: IndicatorType, rule: str, offset: int | None) -> None:
         key = (itype, value.lower())
         if key in found:
             return
@@ -149,9 +156,13 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
             value=value,
             type=itype,
             defanged_original=_find_original(value, text),
+            rule=rule,
+            offset=offset,
+            context=_context(offset) if offset is not None else None,
         )
 
     # Build a fully refanged copy of the text for regex-based extraction.
+    # Offsets below are byte positions into this analyzed (refanged) text.
     norm = _refang_text(text)
 
     # URLs — require an explicit scheme so bare defanged hosts don't become
@@ -165,7 +176,7 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
         if _valid_ip(host, include_private=True) is None and not has_plausible_tld(host):
             continue
         url_hosts.add(host.lower())
-        add(u, "url")
+        add(u, "url", "url_scheme", m.start())
 
     # IPs — own regexes; iocextract's IP extractor is unreliable with adjacency.
     # The dotted-continuation guards reject 4-octet slices of longer dotted
@@ -173,17 +184,17 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
     for m in re.finditer(r"(?<!\d)(?<!\d\.)(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)", norm):
         itype = _valid_ip(m.group(0), include_private)
         if itype is not None:
-            add(m.group(0), itype)
+            add(m.group(0), itype, "ipv4_dotted_quad", m.start())
     for m in re.finditer(r"(?<![\w:])(?:[A-Fa-f0-9]{0,4}:){2,7}[A-Fa-f0-9]{0,4}(?![\w:])", norm):
         itype = _valid_ip(m.group(0), include_private)
         if itype == "ipv6":
-            add(str(ipaddress.ip_address(m.group(0))), itype)
+            add(str(ipaddress.ip_address(m.group(0))), itype, "ipv6_colon_hex", m.start())
 
     # Emails
     for m in re.finditer(rf"\b[a-zA-Z0-9._%+-]+@({_HOST})\b", norm):
         host = m.group(1).lower()
         if has_plausible_tld(host):
-            add(m.group(0).lower(), "email")
+            add(m.group(0).lower(), "email", "email_addr", m.start())
 
     # Domains — regex scan validated against the plausible-TLD check. The
     # lookbehind excludes '@', '/', '.', '-' and word chars so we never capture
@@ -197,12 +208,14 @@ def extract_indicators(text: str, include_private: bool = False) -> list[Indicat
             continue
         if cand in url_hosts:
             continue
-        add(cand, "domain")
+        add(cand, "domain", "domain_plausible_tld", m.start())
 
     # Hashes
     for h in iocextract.extract_hashes(norm):
-        itype = _classify_hash(h.strip())
+        h = h.strip()
+        itype = _classify_hash(h)
         if itype:
-            add(h.strip().lower(), itype)
+            pos = norm.lower().find(h.lower())
+            add(h.lower(), itype, f"hash_{itype}", pos if pos >= 0 else None)
 
     return list(found.values())

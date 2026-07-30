@@ -29,6 +29,11 @@ class Indicator(BaseModel):
     value: str
     type: IndicatorType
     defanged_original: str | None = None
+    # Provenance: which extraction rule fired, and the byte offset + surrounding
+    # snippet in the analyzed (refanged) report text. Populated by extract.py.
+    rule: str | None = None
+    offset: int | None = None
+    context: str | None = None
 
 
 class TechniqueMapping(BaseModel):

@@ -12,6 +12,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .config import ATTACK_URL, CACHE_MAX_AGE_DAYS, cache_dir
@@ -103,12 +104,23 @@ def _dataset_fingerprint(path: Path) -> list[float | int]:
 class AttackIndex:
     """Index of technique ID -> {name, tactics, is_deprecated/revoked}."""
 
-    def __init__(self, index: dict[str, dict]) -> None:
+    dataset = "enterprise-attack"
+
+    def __init__(
+        self, index: dict[str, dict], version: str | None = None,
+        retrieved: str | None = None,
+    ) -> None:
         self._index = index
+        self.version = version
+        self.retrieved = retrieved
 
     @classmethod
     def load(cls, force_refresh: bool = False) -> AttackIndex:
         path = ensure_dataset(force=force_refresh)
+        # "retrieved" = the date the cached STIX bundle was last written.
+        retrieved = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).strftime(
+            "%Y-%m-%d"
+        )
 
         # The derived index is tiny (~900 entries); cache it keyed on the
         # dataset file's fingerprint so the multi-MB STIX bundle isn't
@@ -118,7 +130,7 @@ class AttackIndex:
         try:
             cached = json.loads(index_path.read_text(encoding="utf-8"))
             if cached.get("fingerprint") == fingerprint:
-                return cls(cached["index"])
+                return cls(cached["index"], cached.get("version"), retrieved)
         except (OSError, json.JSONDecodeError, KeyError, TypeError):
             pass  # missing/corrupt index cache — rebuild below
 
@@ -127,14 +139,23 @@ class AttackIndex:
         except (OSError, json.JSONDecodeError) as exc:
             raise AttackError(f"Corrupt ATT&CK cache at {path}: {exc}") from exc
         index = cls._build_index(data)
+        version = cls._dataset_version(data)
         try:
             index_path.write_text(
-                json.dumps({"fingerprint": fingerprint, "index": index}),
+                json.dumps({"fingerprint": fingerprint, "index": index, "version": version}),
                 encoding="utf-8",
             )
         except OSError:
             logger.warning("Could not write ATT&CK index cache at %s.", index_path)
-        return cls(index)
+        return cls(index, version, retrieved)
+
+    @staticmethod
+    def _dataset_version(data: dict) -> str | None:
+        """ATT&CK release version from the STIX collection object, if present."""
+        for obj in data.get("objects", []):
+            if obj.get("type") == "x-mitre-collection":
+                return obj.get("x_mitre_version")
+        return None
 
     @staticmethod
     def _build_index(data: dict) -> dict[str, dict]:
