@@ -339,7 +339,7 @@ def analyze(
             if analysis.rejected_mappings and not verbose:
                 ui.hint("re-run with --verbose to see why each mapping was refused")
         if report:
-            ui.hint("open ctiforge-run-dashboard.html and load the run.json")
+            ui.hint("run `ctiforge dashboard` to open the run-report viewer")
         ui.console.print()
 
     except IngestError as exc:
@@ -458,6 +458,39 @@ def doctor() -> None:
         ui.warn(f"{len(blocking)} item(s) need attention.")
     else:
         ui.success("Ready. `ctiforge extract <source>` works right now, no key needed.")
+    ui.console.print()
+
+
+@app.command()
+def dashboard(
+    print_path: bool = typer.Option(
+        False, "--path", help="Print the file path instead of opening a browser."
+    ),
+) -> None:
+    """Open the run-report viewer. Needs no server and no API key."""
+    import webbrowser
+
+    page = Path(__file__).parent / "web" / "run.html"
+    if not page.exists():  # pragma: no cover - packaging guard
+        ui.fail("The dashboard file is missing from this installation.",
+                "reinstall ctiforge")
+        raise typer.Exit(code=1)
+
+    if print_path:
+        typer.echo(str(page))
+        return
+
+    ui.banner("dashboard  ·  run-report viewer")
+    ui.console.print()
+    opened = webbrowser.open(page.as_uri())
+    if opened:
+        ui.success("opened in your browser")
+    else:
+        ui.note("Could not launch a browser. Open this file:")
+        ui.console.print(Text(f"  {page}", style="accent"))
+    ui.note("Click “Load run.json” and pick a file written by "
+            "`ctiforge analyze --report run.json`.")
+    ui.note("It makes no network requests — safe for incident data and air-gapped use.")
     ui.console.print()
 
 

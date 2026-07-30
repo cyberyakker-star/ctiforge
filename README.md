@@ -211,7 +211,9 @@ queue, and every technique and indicator with its provenance.
 ctiforge analyze report.pdf --report run.json
 ```
 
-Open [`ctiforge-run-dashboard.html`](ctiforge-run-dashboard.html) in a browser
+Then open the viewer — `ctiforge dashboard` (no server needed), or visit `/run`
+while `ctiforge serve` is running. It is a single file with **no external
+requests of any kind**, so it is safe for incident data and works air-gapped
 (single file, no build step, no backend), click **Load run.json**, and pick the
 file. Review decisions can be exported back out as `ctiforge.decisions/1` and
 replayed so resolved items don't reappear:

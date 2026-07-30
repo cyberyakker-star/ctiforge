@@ -72,7 +72,13 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
+        """The live triage dashboard."""
         return (_WEB_DIR / "index.html").read_text(encoding="utf-8")
+
+    @app.get("/run", response_class=HTMLResponse)
+    def run_report() -> str:
+        """The run-report viewer — loads a run.json written by `--report`."""
+        return (_WEB_DIR / "run.html").read_text(encoding="utf-8")
 
     @app.get("/api/demo")
     def api_demo() -> dict[str, Any]:
