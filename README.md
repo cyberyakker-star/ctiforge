@@ -109,6 +109,10 @@ that makes LLM-assisted CTI untrustworthy, and exactly what ctiforge exists to
 catch. Note that a *wrong-but-real* ID is caught by a different guard: in the same
 run `T9999` was rejected as `not present in ATT&CK enterprise`.
 
+Both refusals, as the CLI reports them:
+
+![ctiforge analyze catching a hallucination](docs/img/cli-analyze.png)
+
 ## 10-second quickstart — no API key needed
 
 ```bash
@@ -120,21 +124,7 @@ That's it. `extract` is fully deterministic: no API key, no network calls, no co
 and **it cannot hallucinate** — every value comes from a named rule at a byte
 offset in the source.
 
-```
-ctiforge  extract  ·  deterministic, keyless
-
- TYPE     VALUE                                   AS WRITTEN            RULE                     AT
- ──────────────────────────────────────────────────────────────────────────────────────────────────
- url      https://malicious.example.org/update    hxxps://malicious.…   url_scheme              774
- ipv4     45.77.88.99                                                   ipv4_dotted_quad        722
- email    phish@evil-c2.net                       phish@evil-c2[.]net   email_addr              864
- domain   evil-c2.net                             evil-c2[.]net         domain_plausible_tld    691
- md5      44d88612fea8a8f36de82e1278abb02f                              hash_md5               1020
- sha256   275a021bbfb6489e54d471899f7db9d1663f…                         hash_sha256            1061
-
-  6 indicators
-  1 domain  1 email  1 ipv4  1 md5  1 sha256  1 url
-```
+![ctiforge extract](docs/img/cli-extract.png)
 
 Add `--json` for machines, `-o DIR` to write `iocs.csv`, `--context` to see the
 snippet each rule matched.
@@ -334,6 +324,47 @@ ingest  →  extract  →  ATT&CK index  →  analyze (LLM)  →  render
 
 Explicitly **not** yet: rule drafting, MISP/OpenCTI/STIX export, any online
 enrichment or indicator lookups, database, authentication on the hosted API.
+
+## Gallery
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Setup check — `ctiforge doctor`**
+
+Tells you what's missing and the exact command to fix it.
+
+![ctiforge doctor](docs/img/cli-doctor.png)
+
+</td>
+<td width="50%" valign="top">
+
+**Technique lookup — `ctiforge attack`**
+
+Keyless, instant; exits non-zero when an ID isn't real.
+
+![ctiforge attack](docs/img/cli-attack.png)
+
+</td>
+</tr>
+</table>
+
+**ATT&CK matrix** — techniques placed under every tactic they belong to, coloured
+by confidence. Hover any chip for its verbatim evidence quote.
+
+![ATT&CK matrix](docs/img/attack-matrix.png)
+
+**The guards, on screen** — rejected mappings and dropped indicators get their own
+panels. Nothing the model got wrong is quietly discarded.
+
+![Hallucination guards](docs/img/guards.png)
+
+**Run report viewer** — load a `run.json` for the full provenance trail: per-stage
+timings, the run log, the review queue, and the rule + byte offset behind every
+indicator. Single file, no server required, and it makes no network requests.
+
+![Run report viewer](docs/img/run-report.png)
 
 ## Development
 
