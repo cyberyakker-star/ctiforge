@@ -20,7 +20,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+      - name: Verify optional extras installed
+        # test_api.py / test_mcp.py importorskip their extras, so a failed
+        # install would silently drop whole modules and CI would still look
+        # green. Fail loudly instead.
+        run: |
+          python - <<'PY'
+          import importlib.util as u, sys
+          missing = [m for m in ("fastapi", "mcp") if u.find_spec(m) is None]
+          if missing:
+              sys.exit(f"optional extras missing, tests would silently skip: {missing}")
+          print("optional extras present: fastapi, mcp")
+          PY
       - name: Ruff
         run: ruff check .
       - name: Pytest
-        run: pytest -q
+        # -p no:randomly keeps ordering stable; --strict-markers catches typos.
+        run: pytest -q --strict-markers
