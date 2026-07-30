@@ -200,6 +200,16 @@ def test_review_holds_rejected_and_dropped_items():
         assert set(r) == {"id", "kind", "ref", "reason"}
 
 
+def test_review_reason_attaches_the_offered_evidence_readably():
+    """The README features this text verbatim; keep it a clean sentence."""
+    p = _payload()
+    item = next(r for r in p["review"] if r["ref"] == "T1041")
+    assert item["reason"] == (
+        "evidence sentence not found verbatim in the report. "
+        "Evidence offered: “This never appeared in the source.”"
+    )
+
+
 def test_empty_review_serializes_as_empty_list_not_omitted():
     clean = ReportAnalysis(
         summary="Nothing to review.",
