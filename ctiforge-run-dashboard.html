@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ctiforge — run report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --graphite:#1B1F26;
+  --graphite-2:#2A303A;
+  --sheet:#EDF0F3;
+  --sheet-2:#F7F9FA;
+  --rule:#C3CCD5;
+  --ink:#141922;
+  --ink-soft:#5A6675;
+  --verdigris:#14574B;
+  --oxide:#9E3A0E;
+  --amber:#8A6300;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--graphite);
+  color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.cond{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif}
+
+/* ---------- masthead ---------- */
+.masthead{
+  background:var(--graphite);
+  color:var(--sheet);
+  padding:18px 22px 16px;
+  border-bottom:1px solid #000;
+}
+.mast-top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.wordmark{
+  font-family:"IBM Plex Sans Condensed",sans-serif;
+  font-weight:700;font-size:26px;letter-spacing:.13em;text-transform:uppercase;
+  margin:0;color:#fff;
+}
+.wordmark span{color:#7D8B9B}
+.mast-sub{
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:#8B98A6;letter-spacing:.04em;
+}
+.mast-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;background:#000;margin-top:16px;border:1px solid #000;
+}
+.mast-cell{background:var(--graphite-2);padding:9px 12px}
+.mast-k{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:#7D8B9B;display:block;margin-bottom:3px;
+}
+.mast-v{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#E6EBF0;word-break:break-all}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh;align-items:start}
+.rail{
+  background:var(--graphite);color:var(--sheet);
+  padding:22px 18px 40px;position:sticky;top:0;align-self:start;
+}
+.sheet{background:var(--sheet);padding:26px 28px 60px;min-height:100vh}
+
+.rail-h{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;color:#6F7D8C;
+  margin:0 0 12px;padding-bottom:7px;border-bottom:1px solid #39414D;
+}
+.rail-h + .rail-h{margin-top:30px}
+
+/* pipeline */
+.stage{display:flex;gap:10px;padding:8px 0;border-bottom:1px dotted #333B46;opacity:0}
+.stage:last-of-type{border-bottom:none}
+.stage-tick{
+  width:9px;height:9px;flex:0 0 9px;margin-top:6px;border:1.5px solid #6F7D8C;
+}
+.stage.ok .stage-tick{background:#3E9B7F;border-color:#3E9B7F}
+.stage.warn .stage-tick{background:#C99A1E;border-color:#C99A1E}
+.stage-body{flex:1;min-width:0}
+.stage-name{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;font-size:13.5px;
+  letter-spacing:.05em;text-transform:uppercase;color:#DDE4EA;
+}
+.stage-meta{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#77848F;margin-top:1px}
+
+/* log */
+.log{max-height:340px;overflow-y:auto;padding-right:4px}
+.log-row{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.45;
+  padding:4px 0;border-bottom:1px dotted #2C333D;color:#94A1AD;
+}
+.log-ts{color:#5E6B77}
+.log-row.warn{color:#D9AE4A}
+.log-row.err{color:#E08B6A}
+
+/* ---------- sheet sections ---------- */
+.sec{margin-bottom:34px}
+.sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:0}
+.sec-title{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:17px;
+  letter-spacing:.13em;text-transform:uppercase;margin:0;
+}
+.sec-count{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft)}
+.sec-note{font-size:12.5px;color:var(--ink-soft);margin:8px 0 14px;max-width:62ch}
+
+/* review queue */
+.queue{display:grid;gap:10px;margin-top:14px}
+.qcard{
+  background:var(--sheet-2);border:1px solid var(--rule);border-left:4px solid var(--amber);
+  padding:13px 15px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;
+}
+.qcard.resolved{opacity:.5;border-left-color:var(--rule)}
+.qkind{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--amber);
+}
+.qref{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;margin:3px 0}
+.qreason{font-size:13px;color:var(--ink-soft);max-width:58ch}
+.qactions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;cursor:pointer;
+  border:1px solid var(--ink);background:transparent;color:var(--ink);
+}
+.btn:hover{background:var(--ink);color:var(--sheet)}
+.btn:focus-visible{outline:2px solid var(--verdigris);outline-offset:2px}
+.btn.keep{border-color:var(--verdigris);color:var(--verdigris)}
+.btn.keep:hover{background:var(--verdigris);color:#fff}
+.btn.drop{border-color:var(--oxide);color:var(--oxide)}
+.btn.drop:hover{background:var(--oxide);color:#fff}
+.qdone{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);white-space:nowrap;
+}
+.empty{
+  border:1px dashed var(--rule);padding:22px;text-align:center;
+  font-size:13px;color:var(--ink-soft);background:var(--sheet-2);margin-top:14px;
+}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--rule);background:var(--sheet-2);margin-top:14px}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;text-align:left;color:#fff;
+  background:var(--graphite-2);padding:8px 12px;white-space:nowrap;
+}
+td{padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top;font-size:13px}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#E4E9EE}
+.val{font-family:"IBM Plex Mono",monospace;font-size:12.5px;word-break:break-all}
+.tag{
+  display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10px;
+  font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid var(--ink-soft);color:var(--ink-soft);padding:1px 6px;white-space:nowrap;
+}
+/* provenance chip — every artifact shows what produced it */
+.prov{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-soft);
+  margin-top:3px;display:block;
+}
+.prov b{color:var(--verdigris);font-weight:500}
+
+/* signature: validation stamp */
+.stamp{
+  display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;
+  font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  padding:3px 8px;border:2px solid currentColor;
+  transform:rotate(-3.5deg);white-space:nowrap;
+  box-shadow:inset 0 0 0 1px currentColor;
+}
+.stamp.validated{color:var(--verdigris)}
+.stamp.rejected{color:var(--oxide)}
+.stamp.ambiguous{color:var(--amber)}
+.stamp-note{font-size:11.5px;color:var(--ink-soft);display:block;margin-top:7px;max-width:44ch}
+
+/* footer bar */
+.bar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  border-top:2px solid var(--ink);padding-top:16px;margin-top:36px;
+}
+.bar-note{font-size:12px;color:var(--ink-soft);flex:1;min-width:200px}
+.demo-flag{
+  background:var(--amber);color:#fff;font-family:"IBM Plex Sans Condensed",sans-serif;
+  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  padding:3px 8px;
+}
+input[type=file]{display:none}
+
+/* load-in */
+@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes press{from{opacity:0;transform:rotate(-14deg) scale(1.5)}to{opacity:1;transform:rotate(-3.5deg) scale(1)}}
+.stage{animation:rise .34s ease-out forwards}
+.stamp{animation:press .3s cubic-bezier(.2,1.4,.5,1) both}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .stage{opacity:1}
+}
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;padding-bottom:24px}
+  .sheet{padding:20px 16px 50px;min-height:0}
+  .qcard{grid-template-columns:1fr}
+  .log{max-height:200px}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="mast-top">
+    <h1 class="wordmark">cti<span>forge</span></h1>
+    <span class="mast-sub" id="runTitle">run report</span>
+  </div>
+  <div class="mast-grid" id="mastGrid"></div>
+</header>
+
+<div class="shell">
+  <aside class="rail">
+    <h2 class="rail-h">Pipeline</h2>
+    <div id="stages"></div>
+    <h2 class="rail-h">Run log</h2>
+    <div class="log" id="log"></div>
+  </aside>
+
+  <main class="sheet">
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">Review queue</h2>
+        <span class="sec-count" id="qCount"></span>
+      </div>
+      <p class="sec-note">Everything the pipeline could not resolve deterministically. Nothing here has been guessed — these are handed to you because the rules ran out, not because a model was uncertain.</p>
+      <div class="queue" id="queue"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">Techniques</h2>
+        <span class="sec-count" id="tCount"></span>
+      </div>
+      <p class="sec-note">Every technique ID checked against the MITRE ATT&amp;CK STIX bundle named in the header. Revoked and non-existent IDs are rejected rather than silently passed through.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>ID</th><th>Technique</th><th>Tactic</th><th>Evidence</th><th>Validation</th></tr></thead>
+          <tbody id="techBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">Indicators</h2>
+        <span class="sec-count" id="iCount"></span>
+      </div>
+      <p class="sec-note">Extracted by pattern rule only. The rule and byte offset that produced each value are shown so any indicator can be traced back to its exact position in the source document.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Type</th><th>Value</th><th>Provenance</th><th>Context</th></tr></thead>
+          <tbody id="iocBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="bar">
+      <span class="demo-flag" id="demoFlag">Demo run — synthetic data</span>
+      <span class="bar-note" id="barNote">Load a <code class="mono">run.json</code> written by ctiforge to replace this view.</span>
+      <label class="btn" tabindex="0" id="loadLabel">Load run.json<input type="file" id="fileIn" accept=".json,application/json"></label>
+      <button class="btn" id="exportBtn">Export decisions</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   ctiforge run dashboard — single file, no backend, no build.
+   Reads a run.json artifact emitted by the CLI. Schema at the
+   bottom of this file. Demo run below is entirely fabricated.
+   ============================================================ */
+
+const DEMO = {
+  schema: "ctiforge.run/1",
+  run_id: "cf-20260729-1402-a91c",
+  started_at: "2026-07-29T14:02:11Z",
+  duration_ms: 8420,
+  source: {
+    name: "cloaked-ursa-campaign-brief-2026-06.pdf",
+    sha256: "9f2c41ab77d0e3b8c5a16e40df92b7c3e1a8850db4467fe2c09a3d1b6e7f4520",
+    bytes: 418203,
+    pages: 14
+  },
+  mitre: { dataset: "enterprise-attack", version: "18.0", retrieved: "2026-07-02" },
+  stages: [
+    { id:"ingest",   label:"Ingest",    status:"ok",   duration_ms:1180, note:"14 pp · 61,402 chars" },
+    { id:"extract",  label:"Extract",   status:"ok",   duration_ms:940,  note:"34 indicators · 11 rules" },
+    { id:"map",      label:"Map TTPs",  status:"ok",   duration_ms:2260, note:"13 candidates" },
+    { id:"validate", label:"Validate",  status:"warn", duration_ms:3180, note:"11 pass · 2 reject" },
+    { id:"emit",     label:"Emit",      status:"ok",   duration_ms:860,  note:"run.json · stix2.1" }
+  ],
+  review: [
+    { id:"r1", kind:"Ambiguous mapping", ref:"T1055", reason:"Source says \u201cinjected into a running process\u201d without naming a sub-technique. Parent technique matched; sub-technique undetermined." },
+    { id:"r2", kind:"Low-confidence indicator", ref:"cdn-assets-eu[.]net", reason:"Domain appears once, inside a paragraph describing legitimate infrastructure. Possible false positive from the domain rule." },
+    { id:"r3", kind:"Conflicting tactic", ref:"T1105", reason:"Mapped to Command and Control by keyword, but the surrounding text places it during initial access. Tactic assignment needs a human call." }
+  ],
+  techniques: [
+    { id:"T1566.001", name:"Spearphishing Attachment", tactic:"Initial Access",       match:"keyword:\u201cmacro-enabled attachment\u201d", offset:4821,  validation:"validated" },
+    { id:"T1059.001", name:"PowerShell",               tactic:"Execution",            match:"keyword:\u201cpowershell -enc\u201d",           offset:9140,  validation:"validated" },
+    { id:"T1027",     name:"Obfuscated Files or Information", tactic:"Defense Evasion", match:"keyword:\u201cbase64-encoded payload\u201d",  offset:9388,  validation:"validated" },
+    { id:"T1547.001", name:"Registry Run Keys / Startup Folder", tactic:"Persistence", match:"regex:HKCU\\\\.*\\\\Run",                       offset:12603, validation:"validated" },
+    { id:"T1055",     name:"Process Injection",        tactic:"Defense Evasion",      match:"keyword:\u201cinjected into a running process\u201d", offset:13877, validation:"ambiguous", note:"Parent technique confirmed in dataset. No sub-technique determinable from source text." },
+    { id:"T1071.001", name:"Application Layer Protocol: Web Protocols", tactic:"Command and Control", match:"keyword:\u201cHTTPS beacon\u201d", offset:17244, validation:"validated" },
+    { id:"T1105",     name:"Ingress Tool Transfer",    tactic:"Command and Control",  match:"keyword:\u201cdownloaded a second-stage\u201d", offset:18011, validation:"validated" },
+    { id:"T1041",     name:"Exfiltration Over C2 Channel", tactic:"Exfiltration",     match:"keyword:\u201cexfiltrated over the same channel\u201d", offset:21550, validation:"validated" },
+    { id:"T1486",     name:"Data Encrypted for Impact", tactic:"Impact",              match:"keyword:\u201cencrypted file shares\u201d",     offset:23902, validation:"validated" },
+    { id:"T1583.001", name:"Acquire Infrastructure: Domains", tactic:"Resource Development", match:"keyword:\u201cregistered domains\u201d", offset:3011, validation:"validated" },
+    { id:"T1090.002", name:"Proxy: External Proxy",    tactic:"Command and Control",  match:"keyword:\u201crelay node\u201d",               offset:19330, validation:"validated" },
+    { id:"T1086",     name:"PowerShell (as written in source)", tactic:"\u2014",      match:"literal ID cited in report",                     offset:26440, validation:"rejected", note:"ID revoked in ATT&CK v6 and superseded by T1059.001. Report cites a deprecated identifier." },
+    { id:"T1499.007", name:"\u2014",                   tactic:"\u2014",               match:"literal ID cited in report",                     offset:26612, validation:"rejected", note:"Not present in enterprise-attack v18.0. T1499 has sub-techniques .001\u2013.004 only." }
+  ],
+  indicators: [
+    { type:"ipv4",   value:"198.51.100.47",  rule:"ipv4_dotted_quad",  offset:15402, context:"beacon traffic observed to 198.51.100[.]47 over 443" },
+    { type:"ipv4",   value:"203.0.113.19",   rule:"ipv4_dotted_quad",  offset:15488, context:"secondary relay at 203.0.113[.]19" },
+    { type:"ipv4",   value:"192.0.2.211",    rule:"ipv4_dotted_quad",  offset:19402, context:"staging host 192.0.2[.]211 reachable only internally" },
+    { type:"domain", value:"update-svc-eu[.]net",   rule:"domain_defanged", offset:14120, context:"C2 resolved to update-svc-eu[.]net" },
+    { type:"domain", value:"cdn-assets-eu[.]net",   rule:"domain_defanged", offset:16880, context:"traffic blended with cdn-assets-eu[.]net requests" },
+    { type:"domain", value:"mail-gateway-01[.]info",rule:"domain_defanged", offset:5240,  context:"sender domain mail-gateway-01[.]info" },
+    { type:"url",    value:"hxxps://update-svc-eu[.]net/wp/inc.php", rule:"url_defanged", offset:17902, context:"second-stage retrieved from hxxps://update-svc-eu[.]net/wp/inc.php" },
+    { type:"sha256", value:"4b8a1f09e2c7d5364a90bb17ef2d8c4419a3e07f5cb6d281e9f0a374c518b6d2", rule:"hash_sha256", offset:10220, context:"loader hash" },
+    { type:"sha256", value:"e07c3d4915ba82f6017c9de3a4b50d18cf6229ea7b3f8140d5c6e912af0347bb", rule:"hash_sha256", offset:10310, context:"second-stage implant hash" },
+    { type:"md5",    value:"d41d8cd98f00b204e9800998ecf8427e", rule:"hash_md5", offset:10402, context:"dropper (md5 as published)" },
+    { type:"email",  value:"invoices@mail-gateway-01[.]info", rule:"email_defanged", offset:5188, context:"phishing sender address" },
+    { type:"cve",    value:"CVE-2026-21884", rule:"cve_id", offset:7740, context:"exploited CVE-2026-21884 in the edge appliance" },
+    { type:"cve",    value:"CVE-2025-49112", rule:"cve_id", offset:7802, context:"chained with CVE-2025-49112" },
+    { type:"registry", value:"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SvcUpdate", rule:"registry_path", offset:12611, context:"persistence key written at logon" }
+  ],
+  log: [
+    { ts:"14:02:11", level:"info", stage:"ingest",   msg:"source sha256 9f2c41ab\u2026 verified" },
+    { ts:"14:02:12", level:"info", stage:"ingest",   msg:"14 pages, 61402 chars extracted" },
+    { ts:"14:02:13", level:"info", stage:"extract",  msg:"11 extraction rules loaded" },
+    { ts:"14:02:13", level:"info", stage:"extract",  msg:"34 indicators, 0 model calls" },
+    { ts:"14:02:14", level:"warn", stage:"extract",  msg:"cdn-assets-eu[.]net single occurrence \u2014 flagged" },
+    { ts:"14:02:14", level:"info", stage:"map",      msg:"13 technique candidates" },
+    { ts:"14:02:16", level:"info", stage:"validate", msg:"loaded enterprise-attack v18.0 (2026-07-02)" },
+    { ts:"14:02:17", level:"err",  stage:"validate", msg:"T1086 revoked \u2014 rejected" },
+    { ts:"14:02:17", level:"err",  stage:"validate", msg:"T1499.007 not in dataset \u2014 rejected" },
+    { ts:"14:02:18", level:"warn", stage:"validate", msg:"T1055 sub-technique undetermined" },
+    { ts:"14:02:19", level:"info", stage:"validate", msg:"11 of 13 validated" },
+    { ts:"14:02:19", level:"info", stage:"emit",     msg:"run.json written (3 review items)" }
+  ]
+};
+
+let run = DEMO;
+let isDemo = true;
+const decisions = {};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(){
+  const s = run.source || {}, m = run.mitre || {};
+  $('runTitle').textContent = (run.run_id || 'run') + '  ·  ' + (run.started_at || '');
+
+  $('mastGrid').innerHTML = [
+    ['Source',   s.name || '—'],
+    ['SHA-256',  s.sha256 ? s.sha256.slice(0,24) + '…' : '—'],
+    ['ATT&CK set', (m.dataset || '—') + ' v' + (m.version || '—')],
+    ['Set retrieved', m.retrieved || '—'],
+    ['Indicators', (run.indicators || []).length],
+    ['Techniques', (run.techniques || []).length],
+    ['Needs review', (run.review || []).length],
+    ['Duration', run.duration_ms ? (run.duration_ms/1000).toFixed(1) + ' s' : '—']
+  ].map(([k,v]) =>
+    `<div class="mast-cell"><span class="mast-k">${esc(k)}</span><span class="mast-v">${esc(v)}</span></div>`
+  ).join('');
+
+  $('stages').innerHTML = (run.stages || []).map((st,i) =>
+    `<div class="stage ${esc(st.status)}" style="animation-delay:${i*70}ms">
+       <div class="stage-tick"></div>
+       <div class="stage-body">
+         <div class="stage-name">${esc(st.label)}</div>
+         <div class="stage-meta">${esc(st.note || '')} · ${esc(st.duration_ms || 0)}ms</div>
+       </div>
+     </div>`).join('');
+
+  $('log').innerHTML = (run.log || []).map(l =>
+    `<div class="log-row ${l.level === 'err' ? 'err' : l.level === 'warn' ? 'warn' : ''}">
+       <span class="log-ts">${esc(l.ts)}</span> ${esc(l.stage)} — ${esc(l.msg)}
+     </div>`).join('');
+
+  renderQueue();
+
+  const tech = run.techniques || [];
+  $('tCount').textContent = tech.filter(t => t.validation === 'validated').length + ' validated / ' + tech.length + ' total';
+  $('techBody').innerHTML = tech.map(t =>
+    `<tr>
+       <td class="val"><strong>${esc(t.id)}</strong></td>
+       <td>${esc(t.name)}</td>
+       <td>${esc(t.tactic)}</td>
+       <td><span class="prov"><b>${esc(t.match)}</b><br>offset ${esc(t.offset)}</span></td>
+       <td><span class="stamp ${esc(t.validation)}">${esc(t.validation)}</span>
+         ${t.note ? `<span class="stamp-note">${esc(t.note)}</span>` : ''}</td>
+     </tr>`).join('');
+
+  const iocs = run.indicators || [];
+  $('iCount').textContent = iocs.length + ' extracted · 0 model-derived';
+  $('iocBody').innerHTML = iocs.map(i =>
+    `<tr>
+       <td><span class="tag">${esc(i.type)}</span></td>
+       <td class="val">${esc(i.value)}</td>
+       <td><span class="prov"><b>${esc(i.rule)}</b><br>offset ${esc(i.offset)}</span></td>
+       <td style="color:var(--ink-soft)">${esc(i.context)}</td>
+     </tr>`).join('');
+
+  $('demoFlag').style.display = isDemo ? '' : 'none';
+  $('barNote').textContent = isDemo
+    ? 'Load a run.json written by ctiforge to replace this view.'
+    : 'Loaded ' + (run.run_id || 'run') + ' from file.';
+}
+
+function renderQueue(){
+  const items = run.review || [];
+  const open = items.filter(r => !decisions[r.id]).length;
+  $('qCount').textContent = open + ' open / ' + items.length + ' total';
+
+  if(!items.length){
+    $('queue').innerHTML = '<div class="empty">Nothing to review. Every indicator and technique in this run resolved deterministically.</div>';
+    return;
+  }
+  $('queue').innerHTML = items.map(r => {
+    const d = decisions[r.id];
+    return `<div class="qcard ${d ? 'resolved' : ''}">
+      <div>
+        <div class="qkind">${esc(r.kind)}</div>
+        <div class="qref">${esc(r.ref)}</div>
+        <div class="qreason">${esc(r.reason)}</div>
+      </div>
+      ${d
+        ? `<span class="qdone">${esc(d)} · ${esc(new Date().toISOString().slice(0,10))}</span>`
+        : `<div class="qactions">
+             <button class="btn keep" data-id="${esc(r.id)}" data-d="accepted">Accept</button>
+             <button class="btn drop" data-id="${esc(r.id)}" data-d="rejected">Reject</button>
+             <button class="btn" data-id="${esc(r.id)}" data-d="deferred">Defer</button>
+           </div>`}
+    </div>`;
+  }).join('');
+}
+
+$('queue').addEventListener('click', e => {
+  const b = e.target.closest('button[data-id]');
+  if(!b) return;
+  decisions[b.dataset.id] = b.dataset.d;
+  renderQueue();
+});
+
+$('fileIn').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const parsed = JSON.parse(rd.result);
+      if(!parsed.schema || !parsed.schema.startsWith('ctiforge.run/')){
+        alert('That file is not a ctiforge run artifact. Expected a "schema" field starting with "ctiforge.run/".');
+        return;
+      }
+      run = parsed; isDemo = false;
+      Object.keys(decisions).forEach(k => delete decisions[k]);
+      render();
+    }catch(err){
+      alert('Could not parse that file as JSON: ' + err.message);
+    }
+  };
+  rd.readAsText(f);
+});
+$('loadLabel').addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('fileIn').click(); }
+});
+
+$('exportBtn').addEventListener('click', () => {
+  const out = {
+    schema: 'ctiforge.decisions/1',
+    run_id: run.run_id,
+    decided_at: new Date().toISOString(),
+    decisions: Object.entries(decisions).map(([id, verdict]) => {
+      const item = (run.review || []).find(r => r.id === id) || {};
+      return { review_id:id, ref:item.ref, verdict };
+    })
+  };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], {type:'application/json'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = (run.run_id || 'run') + '-decisions.json';
+  a.click(); URL.revokeObjectURL(url);
+});
+
+render();
+
+/* ------------------------------------------------------------
+   run.json schema (ctiforge.run/1) — what the CLI must emit:
+
+   schema      "ctiforge.run/1"
+   run_id      string
+   started_at  ISO-8601
+   duration_ms number
+   source      { name, sha256, bytes, pages }
+   mitre       { dataset, version, retrieved }
+   stages[]    { id, label, status: ok|warn|err, duration_ms, note }
+   review[]    { id, kind, ref, reason }
+   techniques[]{ id, name, tactic, match, offset,
+                 validation: validated|rejected|ambiguous, note? }
+   indicators[]{ type, value, rule, offset, context }
+   log[]       { ts, level: info|warn|err, stage, msg }
+
+   Decisions export back out as ctiforge.decisions/1 so the CLI
+   can consume them on the next run.
+   ------------------------------------------------------------ */
+</script>
+</body>
+</html>

@@ -91,11 +91,41 @@ ctiforge analyze <source> [options]
   --model MODEL         Anthropic model (default: claude-sonnet-4-6;
                         also settable via CTIFORGE_MODEL)
   --include-private     Keep private/reserved IP indicators (dropped by default)
+  --report PATH         Also write a run.json artifact (see "Run report" below)
+  --decisions PATH      Apply verdicts from a decisions file to the review queue
   --verbose             Verbose logging
   --version             Show version and exit
 ```
 
 The API key comes from `ANTHROPIC_API_KEY` only — never a config file, never logged.
+
+## Run report
+
+`--report` writes a `run.json` artifact (schema `ctiforge.run/1`) describing the
+run: source hash, ATT&CK dataset used, per-stage timings, the run log, the review
+queue, and every technique and indicator with its provenance.
+
+```bash
+ctiforge analyze report.pdf --report run.json
+```
+
+Open [`ctiforge-run-dashboard.html`](ctiforge-run-dashboard.html) in a browser
+(single file, no build step, no backend), click **Load run.json**, and pick the
+file. Review decisions can be exported back out as `ctiforge.decisions/1` and
+replayed so resolved items don't reappear:
+
+```bash
+ctiforge analyze report.pdf --report run.json --decisions run-decisions.json
+```
+
+**Provenance is explicit about its source.** Indicators are extracted
+deterministically, so each carries the extraction `rule` that fired plus its byte
+`offset` into the analyzed text. Technique mappings come from the guarded LLM
+stage — *not* a keyword rule engine — so instead of dressing that up as a pattern
+match, each technique's `match` is the verbatim evidence sentence the mapping was
+required to quote, `offset` is where that sentence occurs in the report, and
+`provenance` names the mechanism. Every `validation` value
+(`validated` / `rejected` / `ambiguous`) is the real result of the STIX check.
 
 ## Interfaces
 
