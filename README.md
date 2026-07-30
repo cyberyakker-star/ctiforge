@@ -44,6 +44,9 @@ assistance and real guards against hallucination. **The guards are the product.*
    extracted by deterministic code (regex + validation). The LLM only classifies
    indicators from that list. Any indicator the model mentions that is *not* in
    the extracted list is dropped and logged — and surfaced in the output.
+   You don't have to take this on faith: `ctiforge extract` runs that half of the
+   pipeline on its own, with **no API key and no network**, and prints the rule
+   and byte offset behind every single value.
 2. **Every ATT&CK technique ID is validated** against a locally cached copy of
    the official MITRE ATT&CK STIX dataset. Unknown, malformed, deprecated, or
    revoked IDs are rejected into a `rejected_mappings` appendix — never silently
@@ -106,20 +109,53 @@ that makes LLM-assisted CTI untrustworthy, and exactly what ctiforge exists to
 catch. Note that a *wrong-but-real* ID is caught by a different guard: in the same
 run `T9999` was rejected as `not present in ATT&CK enterprise`.
 
-## 60-second quickstart
+## 10-second quickstart — no API key needed
 
 ```bash
-# 1. Install (Python 3.11+)
 pip install .
+ctiforge extract report.pdf
+```
 
-# 2. Provide your Anthropic API key (read from the environment ONLY)
-export ANTHROPIC_API_KEY=sk-ant-...
+That's it. `extract` is fully deterministic: no API key, no network calls, no cost,
+and **it cannot hallucinate** — every value comes from a named rule at a byte
+offset in the source.
 
-# 3. Analyze a report — URL, PDF, or text file
+```
+ctiforge  extract  ·  deterministic, keyless
+
+ TYPE     VALUE                                   AS WRITTEN            RULE                     AT
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+ url      https://malicious.example.org/update    hxxps://malicious.…   url_scheme              774
+ ipv4     45.77.88.99                                                   ipv4_dotted_quad        722
+ email    phish@evil-c2.net                       phish@evil-c2[.]net   email_addr              864
+ domain   evil-c2.net                             evil-c2[.]net         domain_plausible_tld    691
+ md5      44d88612fea8a8f36de82e1278abb02f                              hash_md5               1020
+ sha256   275a021bbfb6489e54d471899f7db9d1663f…                         hash_sha256            1061
+
+  6 indicators
+  1 domain  1 email  1 ipv4  1 md5  1 sha256  1 url
+```
+
+Add `--json` for machines, `-o DIR` to write `iocs.csv`, `--context` to see the
+snippet each rule matched.
+
+Not sure your setup is right? `ctiforge doctor` tells you exactly what's missing
+and how to fix it. Want to check a single technique ID? `ctiforge attack T1566.001`
+(also keyless, exits non-zero if the ID isn't real).
+
+## Full analysis (needs a key)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...        # environment only, never a config file
 ctiforge analyze https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-131a
 ```
 
-This writes a timestamped output directory containing:
+This adds the LLM layer — executive summary, threat actors, malware families,
+targeting, and ATT&CK mappings — with every guard applied. **If the key is
+missing, `analyze` still writes the deterministic results** rather than
+discarding the work it already did, and tells you what the key would add.
+
+It writes a timestamped output directory containing:
 
 | File | Purpose |
 | --- | --- |
@@ -130,12 +166,26 @@ This writes a timestamped output directory containing:
 On first run, ctiforge downloads and caches the ATT&CK dataset under
 `~/.cache/ctiforge/` (refreshed automatically when older than 30 days).
 
-## Usage
+## Commands
+
+| Command | Needs a key? | What it does |
+| --- | --- | --- |
+| `ctiforge extract <source>` | **no** | Deterministic IOC extraction with rule + offset provenance |
+| `ctiforge attack <ID>` | **no** | Validate one ATT&CK technique ID against the real dataset |
+| `ctiforge doctor` | **no** | Check your setup and tell you how to fix what's missing |
+| `ctiforge analyze <source>` | yes* | Adds summary, actors, malware, and ATT&CK mapping |
+| `ctiforge serve` | no** | Web UI + REST API (`ctiforge[server]`) |
+
+<sub>\* degrades gracefully to the deterministic results without one. \*\* the dashboard loads a bundled demo, so it's browsable with no key.</sub>
 
 ```bash
-ctiforge analyze <source> [options]
+ctiforge extract <source> [options]
+  -o, --output DIR      Write iocs.csv to this directory
+  --context             Show the source snippet each rule matched
+  --include-private     Keep private/reserved IP indicators (dropped by default)
+  --json                Emit JSON on stdout instead
 
-  <source>              URL, PDF path, or text/markdown file
+ctiforge analyze <source> [options]
   -o, --output DIR      Output directory (default: ./ctiforge-output-<timestamp>/)
   --format json,md,csv  Comma-separated subset of outputs (default: all three)
   --model MODEL         Anthropic model (default: claude-sonnet-4-6;
@@ -143,9 +193,11 @@ ctiforge analyze <source> [options]
   --include-private     Keep private/reserved IP indicators (dropped by default)
   --report PATH         Also write a run.json artifact (see "Run report" below)
   --decisions PATH      Apply verdicts from a decisions file to the review queue
-  --verbose             Verbose logging
-  --version             Show version and exit
+  --verbose             Show why each rejected mapping was refused
 ```
+
+Exit codes: `0` success · `1` failure · `2` usage error, or an invalid technique
+ID from `attack`. Shell completion: `ctiforge --install-completion`.
 
 The API key comes from `ANTHROPIC_API_KEY` only — never a config file, never logged.
 

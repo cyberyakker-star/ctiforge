@@ -93,3 +93,30 @@ Ambiguity resolutions and notable choices made while building ctiforge v0.1.
 - **Single self-contained HTML page**, vanilla JS, no build step (CI stays
   Python-only). Verified via headless Chromium screenshot + a click-through of
   the live Extract path.
+
+## Product polish pass (CLI as a product)
+
+- **The keyless path leads.** `ctiforge extract` runs the deterministic half of
+  the pipeline with no API key, no network and no cost, and is listed first in
+  `--help`. Previously every path required a key, so a user without one saw only
+  an error — despite the tool's most defensible output (rule- and offset-attributed
+  indicators) needing no model at all.
+- **Completed work is never discarded.** `analyze` used to do three stages of real
+  work and then exit 1 when the LLM stage had no key. It now degrades: writes the
+  deterministic indicators plus `run.json`, states what the key would add, exits 0.
+- **One visual language.** `console.py` owns all presentation (banner, stage
+  spinner, tables, guard verdict, errors) so every command looks like the same
+  product. Uses rich, already a typer dependency — no new dependency.
+- **Tables are one row per record.** Long values are truncated with an ellipsis
+  rather than folded; `--json` prints them untouched. A table you have to unpick
+  is not a table.
+- **Every error carries a next step.** `fail()` takes hints, and `_ingest_hints()`
+  tailors them (bad URL vs. missing file vs. scanned PDF). An error the user
+  can't act on is treated as a bug in the message.
+- **`doctor` diagnoses instead of making the user guess** — key, dataset age,
+  optional extras, each with the exact fix command.
+- **`attack <ID>`** exits 2 on an invalid ID so it is scriptable.
+- **First-run download shows progress.** A silent 45 MB fetch is
+  indistinguishable from a hang.
+- **`--json` on `extract`/`attack` emits pure JSON on stdout** (no banner), so the
+  machine path never needs decoration stripped.

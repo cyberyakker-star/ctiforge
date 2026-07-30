@@ -59,13 +59,22 @@ def _is_stale(path: Path) -> bool:
 def _download(path: Path) -> None:
     import httpx
 
+    from .console import download_progress
+
     try:
         with httpx.stream("GET", ATTACK_URL, follow_redirects=True, timeout=120.0) as resp:
             resp.raise_for_status()
+            total = int(resp.headers.get("content-length") or 0) or None
             tmp = path.with_suffix(".tmp")
-            with open(tmp, "wb") as fh:
+            # First run fetches ~45 MB. Show progress: a long silent wait is
+            # indistinguishable from a hang.
+            with (
+                download_progress("fetching MITRE ATT&CK dataset", total) as advance,
+                open(tmp, "wb") as fh,
+            ):
                 for chunk in resp.iter_bytes():
                     fh.write(chunk)
+                    advance(len(chunk))
             tmp.replace(path)
     except httpx.HTTPError as exc:
         raise AttackError(f"Failed to download ATT&CK dataset: {exc}") from exc
