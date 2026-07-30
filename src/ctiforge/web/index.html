@@ -39,14 +39,14 @@
   .ghlink { color: var(--muted); text-decoration: none; font-size: 13px; border: 1px solid var(--border);
     padding: 6px 12px; border-radius: 8px; }
   .ghlink:hover { color: var(--fg); border-color: var(--accent); }
-  main { max-width: 1440px; margin: 0 auto; padding: 22px 30px 90px; }
+  main { max-width: 1760px; margin: 0 auto; padding: 22px 30px 90px; }
   .banner { background: var(--warnbg); color: var(--warnfg); border: 1px solid #4a3d14;
     border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
   /* minmax(0,1fr) lets the content column shrink below its children's min-content,
      so the wide matrix and IOC tables stay contained (scroll/wrap) instead of
      blowing the grid past the page width. */
-  .grid { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; align-items: start; }
-  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .top { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .top { grid-template-columns: minmax(0, 1fr); } }
   .card { background: linear-gradient(180deg, var(--panel), var(--bg2));
     border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
   .card h2 { margin: 0 0 12px; font-size: 15px; letter-spacing: .2px; }
@@ -90,7 +90,7 @@
 
   /* ATT&CK matrix */
   .matrix-wrap { overflow-x: auto; padding-bottom: 6px; }
-  .matrix { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 8px; min-width: 900px; }
+  .matrix { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); gap: 8px; min-width: 900px; }
   .col-h { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
     letter-spacing: .4px; padding: 0 2px 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
     display: flex; justify-content: space-between; gap: 6px; }
@@ -142,6 +142,7 @@
   @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
   .fade { animation: fade .35s ease; }
   @keyframes fade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+  #summary { max-width: 80ch; }
 </style>
 </head>
 <body>
@@ -157,9 +158,8 @@
 <main>
   <div class="banner" id="banner">⚠️ <b>Machine-drafted — requires human review.</b> Indicators are extracted deterministically (regex + validation); the ATT&CK mappings and context are LLM-generated. Every technique ID is validated against the real ATT&CK dataset and every mapping needs a verbatim evidence quote.</div>
 
-  <div class="grid">
-    <!-- INPUT -->
-    <div>
+  <!-- INPUT + SUMMARY (top band) -->
+  <div class="top">
       <div class="card">
         <h2>Report input</h2>
         <div class="tabs">
@@ -241,7 +241,6 @@
         </div>
       </div>
     </div>
-  </div>
 </main>
 
 <script>
