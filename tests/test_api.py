@@ -114,3 +114,14 @@ def test_analyze_text_endpoint(client):
 def test_analyze_bad_source_returns_422(client):
     r = client.post("/api/analyze", json={"source": "/no/such/file.txt"})
     assert r.status_code == 422
+
+
+def test_run_report_viewer_is_served(client):
+    r = client.get("/run")
+    assert r.status_code == 200
+    assert "run report" in r.text.lower()
+
+
+def test_dashboards_cross_link(client):
+    assert 'href="/run"' in client.get("/").text
+    assert 'href="/"' in client.get("/run").text

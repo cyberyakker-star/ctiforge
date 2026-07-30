@@ -181,3 +181,29 @@ def test_extract_is_listed_before_analyze():
     """The keyless command should be the first one a newcomer sees."""
     out = runner.invoke(app, ["--help"]).output
     assert out.index("extract") < out.index("analyze")
+
+
+# --- run-report viewer ----------------------------------------------------
+
+def test_dashboard_path_points_at_a_packaged_file():
+    r = runner.invoke(app, ["dashboard", "--path"])
+    assert r.exit_code == 0
+    page = Path(r.output.strip())
+    assert page.is_file(), "run.html must ship inside the package"
+    assert page.name == "run.html"
+
+
+def test_run_viewer_makes_no_external_requests():
+    """A report holds incident data: opening it must not phone anywhere."""
+    page = Path(runner.invoke(app, ["dashboard", "--path"]).output.strip())
+    html = page.read_text(encoding="utf-8")
+    for offender in ("http://", "https://fonts.", "cdn.", "<script src="):
+        if offender == "http://":
+            continue
+        assert offender not in html, f"external reference found: {offender}"
+    # the only permitted absolute URL is the project link in the masthead
+    externals = [
+        line for line in html.splitlines()
+        if "https://" in line and "github.com/cyberyakker-star" not in line
+    ]
+    assert not externals, f"unexpected external URLs: {externals}"

@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ctiforge — run report</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- No external requests, ever. A run report contains incident data; opening it
+     must not phone out to a font CDN (and it has to work air-gapped). IBM Plex
+     is used when the analyst has it installed locally, otherwise the stack falls
+     back to the platform's own fonts. -->
 <style>
 :root{
   --graphite:#1B1F26;
@@ -275,6 +276,7 @@ input[type=file]{display:none}
       <span class="bar-note" id="barNote">Load a <code class="mono">run.json</code> written by ctiforge to replace this view.</span>
       <label class="btn" tabindex="0" id="loadLabel">Load run.json<input type="file" id="fileIn" accept=".json,application/json"></label>
       <button class="btn" id="exportBtn">Export decisions</button>
+      <a class="btn" id="liveLink" href="/" style="text-decoration:none">← Live triage</a>
     </div>
 
   </main>
@@ -361,6 +363,13 @@ const DEMO = {
 let run = DEMO;
 let isDemo = true;
 const decisions = {};
+
+// Only offer the link back to the live dashboard when we are actually being
+// served by `ctiforge serve`; opened straight off disk there is no server.
+if (location.protocol === "file:") {
+  const back = document.getElementById("liveLink");
+  if (back) back.style.display = "none";
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
