@@ -207,3 +207,26 @@ def test_run_viewer_makes_no_external_requests():
         if "https://" in line and "github.com/cyberyakker-star" not in line
     ]
     assert not externals, f"unexpected external URLs: {externals}"
+
+
+def test_non_verbose_run_has_no_raw_log_lines(tmp_path, monkeypatch, _fake_index):
+    """The summary reports the guard results; raw log lines must not double up."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    payload = {
+        "summary": "s", "threat_actors": [], "malware_families": [],
+        "targeting": {"sectors": [], "regions": []},
+        "techniques": [
+            {"technique_id": "T9999", "behavior": "bogus",
+             "evidence": "The malware communicated with command-and-control "
+                         "infrastructure over HTTPS.", "confidence": "low"},
+        ],
+        "indicator_context": [
+            {"value": "ghost.example", "role": "c2", "context": "invented"},
+        ],
+    }
+    with patch.object(analyze_mod, "_client", return_value=_llm(payload)):
+        r = runner.invoke(app, ["analyze", FIXTURE, "-o", str(tmp_path)])
+    assert "WARNING ctiforge" not in r.output
+    # but the facts are still reported, in the product's own voice
+    assert "1 rejected" in r.output
+    assert "dropped" in r.output

@@ -156,8 +156,12 @@ def analyze(
     verbose: bool = typer.Option(False, "--verbose", help="Verbose logging."),
 ) -> None:
     """Analyze a threat report and write JSON / Markdown / CSV outputs."""
+    # Quiet by default: every guard result the library logs (dropped indicators,
+    # rejected mappings) is already reported in the closing summary and in
+    # run.json. Letting raw log lines interleave with that would show the same
+    # fact twice, in two different voices. --verbose opts into the log stream.
     logging.basicConfig(
-        level=logging.INFO if verbose else logging.WARNING,
+        level=logging.INFO if verbose else logging.ERROR,
         format="%(levelname)s %(name)s: %(message)s",
     )
 
